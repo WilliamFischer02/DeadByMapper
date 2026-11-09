@@ -33,3 +33,6 @@ qa/screens/
 Thumbs.db
 .vscode/
 .idea/
+
+# Agent worktrees (Claude Code lanes)
+.claude/worktrees/

@@ -23,7 +23,8 @@ def main() -> int:
     for name, model in (("map.schema.json", MapData), ("settings.schema.json", Settings)):
         schema = model.model_json_schema()
         schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
-        (OUT / name).write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
+        # newline="\n": on Windows the default text mode writes CRLF and dirties the repo after every build
+        (OUT / name).write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8", newline="\n")
         print("wrote", OUT / name)
     return 0
 
