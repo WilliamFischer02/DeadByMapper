@@ -250,16 +250,19 @@ def test_hotkey_collision_is_reported():
 
 
 # --------------------------------------------------------------------------- listener health (no Win32 needed)
-def _listener(fg: dict[str, int | None], km: KeyMap | None = None) -> tuple[RawInputListener, list[ServiceHealth]]:
+def _listener(
+    fg: dict[str, int | None], km: KeyMap | None = None, now: dict[str, float] | None = None
+) -> tuple[RawInputListener, list[ServiceHealth]]:
     bus = EventBus(synchronous=True)
     health: list[ServiceHealth] = []
     bus.subscribe(ServiceHealth, health.append)
+    t = now if now is not None else {"t": 0.0}
 
     class _Clock:
         def now_ns(self) -> int:
             return 1
 
-    lst = RawInputListener(bus, _Clock(), keymap=km, foreground_hwnd=lambda: fg["hwnd"])
+    lst = RawInputListener(bus, _Clock(), keymap=km, foreground_hwnd=lambda: fg["hwnd"], now_s=lambda: t["t"])
     return lst, health
 
 
@@ -286,46 +289,86 @@ def test_health_detail_surfaces_hotkey_collision():
     assert "WARNING hotkey F9 (generator) is also the game bind for interact" in health[-1].detail
 
 
-def _fake_win32(monkeypatch: pytest.MonkeyPatch, *, elevated: bool, cls: str = "Chrome_WidgetWin_1") -> list[int]:
-    opened: list[int] = []
+START = 0x5555  # foreground window when the listener starts
 
-    def process_elevated(pid: int) -> bool:
-        opened.append(pid)
-        return elevated
 
-    monkeypatch.setattr(_win32, "self_elevated", lambda: False)
+def _fake_win32(monkeypatch: pytest.MonkeyPatch, *, cls: str = "Chrome_WidgetWin_1", elevated: bool = False) -> None:
+    monkeypatch.setattr(_win32, "self_elevated", lambda: elevated)
     monkeypatch.setattr(_win32, "window_pid", lambda hwnd: 4242 if hwnd == OTHER else 1111)
     monkeypatch.setattr(_win32, "window_class", lambda hwnd: cls)
-    monkeypatch.setattr(_win32, "process_elevated", process_elevated)
-    return opened
 
 
-def test_uipi_elevated_foreground_degrades_health(monkeypatch):
-    _fake_win32(monkeypatch, elevated=True)
-    lst, health = _listener({"hwnd": OTHER})
-    lst._health_tick()  # no WM_INPUT in the last interval + elevated foreground
-    assert health[-1].status == "degraded"
-    assert health[-1].detail == UIPI_DETAIL
+def _switch_and_wait(lst: RawInputListener, fg: dict[str, int | None], now: dict[str, float], to: int) -> None:
+    lst._health_tick(initial=True)  # START is foreground at start-up: never flagged
+    fg["hwnd"] = to
+    for _ in range(4):  # foreground changed, then 1 s ticks with zero raw messages
+        now["t"] += 1.0
+        lst._health_tick()
 
 
-def test_uipi_not_flagged_when_input_still_arrives(monkeypatch):
-    _fake_win32(monkeypatch, elevated=True)
-    fg: dict[str, int | None] = {"hwnd": OTHER}
-    lst, health = _listener(fg)
-    data = rp.pack_mouse(1, 1)
-    lst.processor.process_message(_buf(data), len(data), 1)  # input arrived -> not blocked
+def test_uipi_silence_after_foreground_change_degrades_then_recovers(monkeypatch):
+    _fake_win32(monkeypatch)
+    fg: dict[str, int | None] = {"hwnd": START}
+    now = {"t": 0.0}
+    lst, health = _listener(fg, now=now)
+    lst._health_tick(initial=True)
+    fg["hwnd"] = OTHER
+    now["t"] += 1.0
+    lst._health_tick()  # change seen: arm the 3 s silence timer
+    for _ in range(2):
+        now["t"] += 1.0
+        lst._health_tick()
+    assert health[-1].status == "ok"  # only 2 s of silence so far
+    now["t"] += 1.0
     lst._health_tick()
+    assert health[-1].status == "degraded" and health[-1].detail == UIPI_DETAIL
+    assert lst.uipi_degraded
+    data = rp.pack_mouse(1, 1)
+    lst.processor.process_message(_buf(data), len(data), 1)  # the next raw message restores "ok"
+    now["t"] += 0.1
+    lst._health_tick()
+    assert health[-1].status == "ok" and not lst.uipi_degraded
+    for _ in range(5):  # same window, idle again: proven not blocked -> stays ok
+        now["t"] += 1.0
+        lst._health_tick()
     assert health[-1].status == "ok"
 
 
-def test_uipi_check_never_inspects_the_game_process(monkeypatch):
-    opened = _fake_win32(monkeypatch, elevated=True)
-    fg: dict[str, int | None] = {"hwnd": OTHER}
-    lst, health = _listener(fg)
-    lst.bus.publish(GameProcessChanged(ts_ns=1, running=True, pid=4242))  # the foreground pid IS the game
-    lst._health_tick()
-    assert opened == [] and health[-1].status == "ok"
-    opened2 = _fake_win32(monkeypatch, elevated=True, cls="UnrealWindow")  # unknown pid but an Unreal window
-    lst2, health2 = _listener(fg)
-    lst2._health_tick()
-    assert opened2 == [] and health2[-1].status == "ok"
+def test_uipi_not_flagged_when_input_keeps_arriving(monkeypatch):
+    _fake_win32(monkeypatch)
+    fg: dict[str, int | None] = {"hwnd": START}
+    now = {"t": 0.0}
+    lst, health = _listener(fg, now=now)
+    lst._health_tick(initial=True)
+    fg["hwnd"] = OTHER
+    data = rp.pack_mouse(1, 1)
+    for _ in range(6):
+        lst.processor.process_message(_buf(data), len(data), 1)
+        now["t"] += 1.0
+        lst._health_tick()
+    assert all(h.status == "ok" for h in health)
+
+
+def test_uipi_never_flagged_for_startup_window_game_unreal_or_when_elevated(monkeypatch):
+    for setup, to in (
+        ({}, START),  # the start-up foreground is not a change
+        ({"elevated": True}, OTHER),  # we are elevated: UIPI cannot block us
+        ({"cls": "UnrealWindow"}, OTHER),  # DBD's window class
+    ):
+        _fake_win32(monkeypatch, **setup)
+        fg: dict[str, int | None] = {"hwnd": START}
+        now = {"t": 0.0}
+        lst, health = _listener(fg, now=now)
+        _switch_and_wait(lst, fg, now, to)
+        assert all(h.status == "ok" for h in health), setup
+    _fake_win32(monkeypatch)
+    fg = {"hwnd": START}
+    now = {"t": 0.0}
+    lst, health = _listener(fg, now=now)
+    lst.bus.publish(GameProcessChanged(ts_ns=1, running=True, pid=4242))  # foreground pid IS the game
+    _switch_and_wait(lst, fg, now, OTHER)
+    assert all(h.status == "ok" for h in health)
+    lst, health = _listener(fg, now=now)
+    lst.bus.publish(GameWindowChanged(ts_ns=1, hwnd=OTHER, client_rect=None, focused=True))  # the game hwnd
+    _switch_and_wait(lst, fg, now, OTHER)
+    assert all(h.status == "ok" for h in health)

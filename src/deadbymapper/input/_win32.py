@@ -2,7 +2,7 @@
 
 Lives in input/ (not gamelink/win32_util.py, which belongs to the capture lane) because it is input
 specific: Raw Input structures and calls, the hidden sink window's message loop, and two read-only
-helpers for the UIPI check and the probe's ``--self`` mode.
+helpers (own-token elevation, foreground window pid/class) for the UIPI heuristic and the probe's ``--self`` mode.
 
 OBSERVE ONLY: nothing here sends, injects, blocks or hooks input. No SendInput / keybd_event /
 mouse_event / SetWindowsHookEx - tests/test_input_privacy.py greps the input package for them.
@@ -11,7 +11,6 @@ mouse_event / SetWindowsHookEx - tests/test_input_privacy.py greps the input pac
 from __future__ import annotations
 
 import functools
-import os
 import sys
 from typing import Any
 
@@ -112,8 +111,6 @@ if IS_WINDOWS:  # pragma: no cover - Windows only
     kernel32.GetModuleHandleW.restype = wintypes.HMODULE
     kernel32.GetCurrentProcess.restype = wintypes.HANDLE
     kernel32.GetConsoleWindow.restype = wintypes.HWND
-    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-    kernel32.OpenProcess.restype = wintypes.HANDLE
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     advapi32.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
     advapi32.GetTokenInformation.argtypes = [
@@ -204,7 +201,6 @@ RID_INPUT = 0x10000003
 UINT_ERROR = 0xFFFFFFFF  # (UINT)-1
 ERROR_INSUFFICIENT_BUFFER = 122
 GA_ROOTOWNER = 3
-PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 TOKEN_QUERY = 0x0008
 TOKEN_ELEVATION_CLASS = 20  # TokenElevation
 HID_USAGE_PAGE_GENERIC = 0x01
@@ -277,40 +273,26 @@ def console_root_window() -> int | None:
     return int(root or hwnd)
 
 
-def process_elevated(pid: int) -> bool | None:
-    """True/False if the token says so; True when the token cannot even be opened from this process
-    (that is UIPI-relevant: a higher-integrity process); None when the process cannot be opened at all.
-
-    Opens the process with PROCESS_QUERY_LIMITED_INFORMATION only. Callers must never pass the game's
-    pid (the listener skips the DBD process - we never open a handle to the game)."""
-    if not IS_WINDOWS:
-        return None
-    h = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)  # pragma: no cover - Windows only
-    if not h:
-        return None
-    try:
-        tok = wintypes.HANDLE()
-        if not advapi32.OpenProcessToken(h, TOKEN_QUERY, ctypes.byref(tok)):
-            return True  # access denied to the token of a process we could open -> higher integrity
-        try:
-            te = TOKEN_ELEVATION()
-            ret = wintypes.DWORD()
-            ok = advapi32.GetTokenInformation(
-                tok, TOKEN_ELEVATION_CLASS, ctypes.byref(te), ctypes.sizeof(te), ctypes.byref(ret)
-            )
-            return bool(te.TokenIsElevated) if ok else None
-        finally:
-            kernel32.CloseHandle(tok)
-    finally:
-        kernel32.CloseHandle(h)
-
-
 @functools.cache
 def self_elevated() -> bool:
-    """Whether THIS process runs elevated (then UIPI never blocks us). Cached: it cannot change."""
+    """Whether THIS process runs elevated (then UIPI never blocks us). Cached: it cannot change.
+
+    Uses only our own token via the GetCurrentProcess() pseudo-handle: no other process is ever opened
+    and no other token is ever queried (docs/FAIR_PLAY.md)."""
     if not IS_WINDOWS:
         return False
-    return bool(process_elevated(os.getpid()))  # pragma: no cover
+    tok = wintypes.HANDLE()  # pragma: no cover - Windows only below
+    if not advapi32.OpenProcessToken(kernel32.GetCurrentProcess(), TOKEN_QUERY, ctypes.byref(tok)):
+        return False
+    try:
+        te = TOKEN_ELEVATION()
+        ret = wintypes.DWORD()
+        ok = advapi32.GetTokenInformation(
+            tok, TOKEN_ELEVATION_CLASS, ctypes.byref(te), ctypes.sizeof(te), ctypes.byref(ret)
+        )
+        return bool(ok and te.TokenIsElevated)
+    finally:
+        kernel32.CloseHandle(tok)
 
 
 def registered_devices() -> list[tuple[int, int, int, int]]:

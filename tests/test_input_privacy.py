@@ -155,6 +155,20 @@ def test_input_code_never_injects_or_hooks():
         assert not forbidden.search(f.read_text(encoding="utf-8")), f"{f.name} references an injection/hook API"
 
 
+def test_input_package_opens_no_process():
+    """Fair play: the input package never opens a handle to another process (not even
+    PROCESS_QUERY_LIMITED_INFORMATION). Our own token via GetCurrentProcess() is the only token read."""
+    root = Path(__file__).resolve().parent.parent
+    files = [*sorted((root / "src" / "deadbymapper" / "input").glob("*.py")), root / "tools" / "input_probe.py"]
+    for f in files:
+        text = f.read_text(encoding="utf-8")
+        assert "OpenProcess(" not in text, f"{f.name} calls OpenProcess"
+        assert "OpenProcess." not in text, f"{f.name} declares OpenProcess"
+        for line in text.splitlines():
+            if "OpenProcessToken(" in line:
+                assert "GetCurrentProcess()" in line, f"{f.name}: OpenProcessToken only on our own process"
+
+
 def test_probe_names_only_allowed_keys():
     path = Path(__file__).resolve().parent.parent / "tools" / "input_probe.py"
     spec = importlib.util.spec_from_file_location("input_probe", path)

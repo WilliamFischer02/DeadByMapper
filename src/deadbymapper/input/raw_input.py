@@ -44,7 +44,8 @@ log = logging.getLogger(__name__)
 UIPI_DETAIL = (
     "elevated window in foreground - Raw Input not delivered (run DeadByMapper as the same user, not elevated)"
 )
-UNREAL_WINDOW_CLASS = "UnrealWindow"  # DBD's top-level window class - never inspected for elevation
+UNREAL_WINDOW_CLASS = "UnrealWindow"  # DBD's top-level window class - never treated as a UIPI suspect
+UIPI_SILENCE_S = 3.0  # raw-input silence after a foreground change before UIPI is suspected
 _MSG_BUF_SIZE = 256  # GetRawInputData target: mouse 48, keyboard 40; HID can be larger -> grows on demand
 _BATCH_BUF_SIZE = 64 * 1024  # GetRawInputBuffer target (~1300 mouse messages)
 
@@ -175,6 +176,7 @@ class RawInputListener(Service):
         batch_window_s: float = 0.004,
         health_interval_s: float = 1.0,
         foreground_hwnd: Callable[[], int | None] = _foreground_hwnd,
+        now_s: Callable[[], float] = time.perf_counter,
     ) -> None:
         super().__init__(bus, clock)
         km = keymap or KeyMap.load()
@@ -201,7 +203,11 @@ class RawInputListener(Service):
         self._health_msgs = 0
         self._health_abs = 0
         self._health_mouse = 0
-        self._elev_cache: tuple[int, bool] | None = None
+        self._now_s = now_s
+        self._uipi_fg: int | None = None
+        self._uipi_since_s = 0.0
+        self._uipi_msgs = 0
+        self.uipi_degraded = False
         # diagnostics (counts only)
         self.registered = False
         self.register_error = 0
@@ -329,6 +335,8 @@ class RawInputListener(Service):
                     break
                 dispatch(pmsg)
             now = time.perf_counter()
+            if self.uipi_degraded and self.processor.messages != self._uipi_msgs:
+                next_health = now  # input is flowing again: restore "ok" right away
             if now >= next_health:
                 next_health = now + self.health_interval_s
                 self._health_tick()
@@ -433,8 +441,11 @@ class RawInputListener(Service):
         parts = [self._base_detail()]
         parts.append("passing: DBD foreground" if game_fg else "gated: DBD not foreground")
         status = "ok"
-        if not initial and since == 0 and not game_fg and self._foreign_elevated_foreground():
+        if initial:  # the window that is foreground at start-up is not a "change": arm, never flag
+            self._uipi_fg, self._uipi_since_s, self._uipi_msgs = self._fg(), float("inf"), p.messages
+        elif self._uipi_suspected() and since == 0:
             status, parts = "degraded", [UIPI_DETAIL]
+        self.uipi_degraded = status == "degraded"
         if mouse_since and abs_since == mouse_since:
             parts.append("absolute pointer (RDP/tablet/VM) - no raw mouse counts")
         parts.extend(self.hotkey_warnings)
@@ -445,19 +456,25 @@ class RawInputListener(Service):
             self._last_health = (status, detail)
             self.set_health(status, detail)
 
-    def _foreign_elevated_foreground(self) -> bool:
-        """Best-effort UIPI check: is the foreground window an elevated process (and we are not)?
+    def _uipi_suspected(self) -> bool:
+        """Passive UIPI heuristic - opens no process and queries no token but our own.
 
-        Never inspects the game: skips the DBD window/pid and any Unreal window, so no handle to the game
-        process is ever opened. Cached per foreground hwnd."""
+        If we are not elevated, the foreground changed to a non-game window, and ZERO raw messages arrived
+        during the following ``UIPI_SILENCE_S`` while that window stayed foreground, Raw Input is probably
+        being withheld by UIPI (an elevated window has focus). The first message that arrives clears it.
+        Skips the DBD window/pid and any Unreal window. May false-positive on a user who sits idle for
+        3 s after switching windows - acceptable, the gate drops that input anyway."""
+        now = self._now_s()
+        msgs = self.processor.messages
         fg = self._fg()
+        if fg != self._uipi_fg:  # foreground changed: (re)arm the silence timer for the new window
+            self._uipi_fg, self._uipi_since_s, self._uipi_msgs = fg, now, msgs
+            return False
         if not fg or fg == self.gate.game_hwnd or w.self_elevated():
             return False
-        if self._elev_cache is not None and self._elev_cache[0] == fg:
-            return self._elev_cache[1]
-        pid = w.window_pid(fg)
-        elevated = False
-        if pid and pid != os.getpid() and pid != self._game_pid and w.window_class(fg) != UNREAL_WINDOW_CLASS:
-            elevated = bool(w.process_elevated(pid))
-        self._elev_cache = (fg, elevated)
-        return elevated
+        if msgs != self._uipi_msgs or now - self._uipi_since_s < UIPI_SILENCE_S:
+            return False
+        pid = w.window_pid(fg)  # GetWindowThreadProcessId: reads the window, opens nothing
+        if pid is not None and pid in (os.getpid(), self._game_pid):
+            return False
+        return w.window_class(fg) != UNREAL_WINDOW_CLASS
