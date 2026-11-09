@@ -35,6 +35,16 @@ class TierModel:
         return 3
 
 
+@dataclass(frozen=True, slots=True)
+class HeartbeatDiag:
+    """What the last ``analyze`` saw, for probes/calibration (not published on the bus)."""
+
+    level_db: float  # in-band (30-140 Hz) energy, dB
+    periodicity: float  # autocorrelation peak 0..1 (min_periodicity gates tier > 0)
+    bpm_candidate: float | None  # tempo of the strongest period, even when below the gate
+    level_fast_db: float = -120.0  # in-band energy over the last ``fast_s`` only (reacts within ~1 tick)
+
+
 @dataclass
 class HeartbeatAnalyzer:
     sr: int = 16000
@@ -46,6 +56,7 @@ class HeartbeatAnalyzer:
     max_bpm: float = 180.0
     min_periodicity: float = 0.25
     min_level_db: float = -60.0
+    fast_s: float = 0.3  # short window for ``HeartbeatDiag.level_fast_db`` (M6 level-based tiers)
     tiers: TierModel = field(default_factory=TierModel)
 
     def __post_init__(self) -> None:
@@ -54,6 +65,7 @@ class HeartbeatAnalyzer:
         freqs = np.fft.rfftfreq(self.frame, 1.0 / self.sr)
         self._band = (freqs >= self.band_hz[0]) & (freqs <= self.band_hz[1])
         self._win = np.hanning(self.frame).astype(np.float32)
+        self.diag: HeartbeatDiag | None = None
 
     def feed(self, mono: np.ndarray) -> None:
         """Append mono float samples at ``sr`` (resample upstream)."""
@@ -70,7 +82,10 @@ class HeartbeatAnalyzer:
         if env.size < 2 * self.sr / self.hop:  # need >= 2 s
             return None
         level_db = 10.0 * math.log10(float(np.mean(env)) / self.frame + 1e-12)
+        n_fast = max(1, int(self.fast_s * self.sr / self.hop))
+        fast_db = 10.0 * math.log10(float(np.mean(env[-n_fast:])) / self.frame + 1e-12)
         if level_db < self.min_level_db:
+            self.diag = HeartbeatDiag(level_db, 0.0, None, fast_db)
             return TerrorRadiusObserved(ts_ns=ts_ns, tier=0, confidence=0.6, source=source)
         onset = np.maximum(0.0, np.diff(np.log(env + 1e-9)))
         onset -= onset.mean()
@@ -86,6 +101,7 @@ class HeartbeatAnalyzer:
         seg = ac[lo:hi]
         k = int(np.argmax(seg)) + lo
         strength = float(ac[k])
+        self.diag = HeartbeatDiag(level_db, strength, round(60.0 * env_rate / k, 1) if k > 0 else None, fast_db)
         # prefer the fundamental: if half the lag is also strong it was a 'dub' sub-period
         if strength < self.min_periodicity:
             return TerrorRadiusObserved(ts_ns=ts_ns, tier=0, confidence=0.5, source=source)
@@ -96,6 +112,7 @@ class HeartbeatAnalyzer:
         else:
             kf = float(k)
         bpm = 60.0 * env_rate / kf
+        self.diag = HeartbeatDiag(level_db, strength, round(bpm, 1), fast_db)
         conf = min(1.0, strength) * (1.0 if self.tiers.calibrated else 0.5)
         return TerrorRadiusObserved(
             ts_ns=ts_ns, tier=self.tiers.tier(bpm), bpm=round(bpm, 1), confidence=conf, source=source
