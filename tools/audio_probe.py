@@ -89,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seconds", type=float, default=60.0)
     ap.add_argument("--mode", choices=["auto", "process", "device"], default="auto")
     ap.add_argument("--device", default=None, help="loopback device name substring (default: default output)")
-    ap.add_argument("--no-wav", action="store_true", help="do not write the WAV")
+    ap.add_argument("--wav", action="store_true", help="also write the analyser input as a local WAV (opt-in)")
     args = ap.parse_args(argv)
 
     if sys.platform != "win32":
@@ -114,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
 
     svc = LoopbackHeartbeatService(bus, clock, mode=args.mode, device_name=args.device)
     tap: WavTap | None = None
-    if not args.no_wav:
+    if args.wav:
         tap = WavTap(probe_dir() / f"{datetime.now():%Y%m%d-%H%M%S}.wav")
         svc.pipeline.taps.append(tap)
 

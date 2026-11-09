@@ -76,7 +76,7 @@ def main() -> int:
     ap.add_argument("--title", help="window title to match (case-insensitive, substring); default: DBD")
     ap.add_argument("--pid", type=int, help="capture the largest window of this process")
     ap.add_argument("--seconds", type=float, default=10.0)
-    ap.add_argument("--save", type=int, default=3, help="downscaled PNGs to save (0 = none)")
+    ap.add_argument("--save", type=int, default=0, help="downscaled PNGs to save locally (opt-in; 0 = none)")
     ap.add_argument("--width", type=int, default=960, help="analysis width (settings.capture.analysis_width)")
     ap.add_argument("--fps", type=float, default=30.0, help="target delivery rate")
     ap.add_argument("--list", action="store_true", help="list visible top-level windows and exit")

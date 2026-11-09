@@ -165,6 +165,25 @@ def test_state_machine_adopts_state_published_by_others():
     assert states[-1].ts_ns == 3
 
 
+def test_state_machine_ignores_its_own_events_on_a_queued_bus():
+    """Regression: with the async bus the machine can publish A then B before A is dispatched; A must
+    not be adopted as 'foreign' and revert the state (the Stop button then silently no-ops)."""
+    bus = EventBus(synchronous=False)
+    sm = MatchStateMachine(ManualClock(), agree=3)
+    sm.attach(bus)
+    states: list[MatchStateChanged] = []
+    bus.subscribe(MatchStateChanged, states.append)
+    bus.publish(GameProcessChanged(ts_ns=0, running=True))
+    bus.publish(UserTrialControl(ts_ns=1, action="start"))
+    bus.drain()  # dispatches GameProcessChanged -> (MENU published) then UserTrialControl -> (IN_MATCH)...
+    bus.drain()  # ...then both MatchStateChanged events come back to the machine
+    assert sm.state == MatchState.IN_MATCH and sm.manual is True
+    bus.publish(UserTrialControl(ts_ns=2, action="stop"))
+    bus.drain()
+    bus.drain()
+    assert states[-1].state == MatchState.MENU and sm.state == MatchState.MENU
+
+
 def test_unknown_trial_action_is_ignored():
     bus, sm, states = _sm()
     bus.publish(UserTrialControl(ts_ns=1, action="pause"))

@@ -132,7 +132,7 @@ def test_tier_publisher_publishes_on_lullaby_or_chase_change_and_ignores_none():
     ("setting", "pid", "supported", "perr", "mode"),
     [
         ("auto", 1234, True, None, "process"),
-        ("auto", None, True, None, "device"),
+        ("auto", None, True, None, "none"),  # privacy: nothing to listen to without the game
         ("auto", 1234, False, None, "device"),
         ("auto", 1234, True, "E_FAIL", "device"),
         ("process", 1234, True, None, "process"),
@@ -304,18 +304,17 @@ class Harness:
         return self.health[-1]
 
 
-def test_auto_mode_device_then_process_when_dbd_appears_then_back():
+def test_auto_mode_waits_then_process_when_dbd_appears_then_back():
+    """Privacy: auto mode captures nothing while the game is not running (device loopback would hear
+    Discord/music for no purpose); it only falls back to device loopback while DBD runs."""
     h = Harness("auto")
     h.tick()
-    assert h.svc.status().mode == "device"
+    assert h.svc.status().mode == "none" and not h.opened
     assert h.last.status == "degraded"
-    assert h.last.detail == (
-        "device loopback: Speakers (Realtek) (captures ALL system audio; "
-        "process loopback unavailable: Dead by Daylight not running)"
-    )
+    assert "Dead by Daylight not running" in h.last.detail
     h.svc._on_process(GameProcessChanged(ts_ns=1, running=True, pid=4242))
     h.tick()
-    assert h.opened[0].closed and h.svc.status().mode == "process"
+    assert h.svc.status().mode == "process" and len(h.opened) == 1
     assert h.last.status == "ok" and "pid 4242" in h.last.detail
     n = len(h.health)
     h.tick()
@@ -323,7 +322,7 @@ def test_auto_mode_device_then_process_when_dbd_appears_then_back():
     assert len(h.health) == n  # steady state: no health spam
     h.svc._on_process(GameProcessChanged(ts_ns=2, running=False))
     h.tick()
-    assert h.svc.status().mode == "device" and h.opened[1].closed
+    assert h.svc.status().mode == "none" and h.opened[0].closed
 
 
 def test_auto_mode_falls_back_to_device_when_process_loopback_fails_and_retries_later():
@@ -435,8 +434,9 @@ def test_service_threads_end_to_end_with_fake_source_and_bus_subscription():
     svc.start()
     try:
         deadline = time.monotonic() + 3
-        while not opened and time.monotonic() < deadline:
+        while svc.status().mode != "none" and time.monotonic() < deadline:
             time.sleep(0.01)
+        assert not opened  # auto mode opens nothing before the game runs
         bus.publish(GameProcessChanged(ts_ns=clock.now_ns(), running=True, pid=31337))
         while svc.status().mode != "process" and time.monotonic() < deadline:
             time.sleep(0.01)

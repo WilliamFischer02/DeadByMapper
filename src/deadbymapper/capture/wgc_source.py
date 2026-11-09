@@ -1,5 +1,6 @@
 """Windows Graphics Capture of the game WINDOW (primary backend). Verified on Windows 11 (M1) against
-``windows-capture`` 2.0.1 with stand-in windows; not yet against DBD itself (docs/CAPTURE.md).
+``windows-capture`` 2.0.1 with stand-in windows and against DBD itself (1920x1080 Windowed
+Fullscreen, 30 fps - docs/CAPTURE.md).
 
 Threads and data flow:
   WGC native thread --on_frame--> throttle -> client crop -> memcpy into a pooled buffer (FrameHandoff)

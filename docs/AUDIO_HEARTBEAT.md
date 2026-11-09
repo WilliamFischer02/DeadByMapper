@@ -78,7 +78,9 @@ helpers), `audio/resample.py`, `audio/heartbeat.py`. Probe: `tools/audio_probe.p
 Health strings (dashboard Audio chip):
 - `ok`: `process loopback: Dead by Daylight (pid N), 48000 Hz`
 - `degraded`: `device loopback: <device> (captures ALL system audio; process loopback unavailable: <reason>)`
-- `degraded`: `process loopback: waiting (<reason>)` (forced process mode, game not running)
+- `degraded`: `process loopback: waiting (<reason>)` (game not running: `auto` and `process` modes capture
+  NOTHING without the game - device loopback is only a fallback while DBD runs, so Discord/music are never
+  analysed for no purpose; `device` mode forced in settings is the exception)
 - `down`: `no loopback capture: <error>; retrying in <s> s`
 
 Measured on the user's PC (i5-13600K, idle desktop + background audio):

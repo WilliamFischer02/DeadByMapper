@@ -148,18 +148,27 @@ def test_input_code_never_injects_or_hooks():
     """Observe only: no SendInput / keybd_event / mouse_event / SetWindowsHookEx / BlockInput calls in input/
     or in the probe (a docstring may name them; an attribute access or getattr may not)."""
     root = Path(__file__).resolve().parent.parent
-    files = [*sorted((root / "src" / "deadbymapper" / "input").glob("*.py")), root / "tools" / "input_probe.py"]
+    files = _all_app_sources(root)
     api = r"(SendInput|keybd_event|mouse_event|SetWindowsHookEx\w*|BlockInput)\b"
     forbidden = re.compile(rf"(\.{api}|getattr\([^)]*['\"]{api})")
     for f in files:
         assert not forbidden.search(f.read_text(encoding="utf-8")), f"{f.name} references an injection/hook API"
 
 
+def _all_app_sources(root: Path) -> list[Path]:
+    """Every shipped Python file: src/, tools/ and packaging/ (docs/FAIR_PLAY.md review checklist)."""
+    return [
+        *sorted((root / "src").rglob("*.py")),
+        *sorted((root / "tools").glob("*.py")),
+        *sorted((root / "packaging").glob("*.py")),
+    ]
+
+
 def test_input_package_opens_no_process():
     """Fair play: the input package never opens a handle to another process (not even
     PROCESS_QUERY_LIMITED_INFORMATION). Our own token via GetCurrentProcess() is the only token read."""
     root = Path(__file__).resolve().parent.parent
-    files = [*sorted((root / "src" / "deadbymapper" / "input").glob("*.py")), root / "tools" / "input_probe.py"]
+    files = _all_app_sources(root)
     for f in files:
         text = f.read_text(encoding="utf-8")
         assert "OpenProcess(" not in text, f"{f.name} calls OpenProcess"

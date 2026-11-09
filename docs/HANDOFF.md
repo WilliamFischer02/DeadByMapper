@@ -15,6 +15,73 @@ what's next, what we need from the user. Details go in DECISIONS.md, ROADMAP.md 
 
 ---
 
+## 2026-11-08 - M1 - Sensors verified on hardware, first exe on the Desktop, manual trial control
+**State:**
+- 249 tests passing, 2 skipped (speaker-playing audio tests, opt-in with `DBM_AUDIO_HW_TESTS=1`); ruff clean.
+- Localization bench untouched this session (30 seeds, 4 visits): fix 3 76.7 %, fix 4 93.3 %, median 1.13 m,
+  false-LOCKED 0.00 %, 0.89 ms/tick.
+- `DeadByMapper.exe` builds (PyInstaller one-folder, ~275 MB, 1,713 files, ~2 min build), installs to
+  `%LOCALAPPDATA%\Programs\DeadByMapper` with Desktop + Start Menu shortcuts, cold start 0.75-0.93 s to the
+  dashboard. Crash reports go to `%LOCALAPPDATA%\DeadByMapper\logs\crash-*.txt`.
+- Fair-play review of the merged diff: BLOCK on one privacy regression (a title-only window match could make
+  a Notepad/Explorer window titled `DeadByDaylight.log - ...` the InputGate's game window and the capture
+  target) - fixed: app matchers now require the game exe (title only counts for an unreadable exe on an
+  `UnrealWindow`), regression tests added. All other findings fixed the same session: state machine tracks
+  every self-published event (async bus), audio activation timeout parks the COM handler, stop() cannot
+  leave a live stream, `auto` audio captures nothing without the game, probes save media only on request,
+  replay skips recorded `MatchStateChanged`, the no-injection/no-OpenProcess greps cover src/tools/packaging.
+
+**Changed:**
+- Baseline fix: zero-arg `super()` in a slots dataclass broke test collection on CPython 3.12 (`core/events.py`).
+- Contracts (lead): `UserTrialControl(action, role)`; `MatchStateChanged.manual`; `MatchSnapshot.manual_trial`;
+  `CaptureSettings.capture_fps`; `App.capture` handle; `MouseDelta` may be a batched sum (<= ~4 ms).
+- `perception/state_machine.py`: manual start/stop, ignores screen observations during a manual trial, adopts
+  foreign `MatchStateChanged` (demo/replay); attached in every mode.
+- `input/`: Raw Input rewritten and verified on x64 (struct sizes, registration, INPUTSINK, L/R modifiers,
+  GetRawInputBuffer batching: 0.72 % of a core at 8 kHz extrapolated vs 5.3 % unbatched). Gate verified:
+  600 raw messages, 0 published without the game. No OpenProcess anywhere (test enforces). `tools/input_probe.py`.
+- `capture/`: WGC window capture via windows-capture 2.0.1, verified on the real game (1920x1080 windowed
+  fullscreen, 30.0 fps, 0.4-1.1 % CPU, callback p95 1.4 ms). OpenCV never runs on the native callback thread
+  (crash on re-attach fixed). Window tracker publishes physical rects + display mode. `tools/capture_probe.py`,
+  `docs/CAPTURE.md`. DXGI fallback is an honest "down".
+- `audio/`: process-specific WASAPI loopback (ctypes COM, verified isolated per process and attached to the
+  live DBD pid) with device-loopback fallback ("degraded"); tier mapping still `calibrated: false`.
+  `tools/audio_probe.py`. Beep-to-analyser latency 3-17 ms; whole process ~4 % of one core.
+- `ui/`: Start/Stop trial control, map picker (Test Arena first, stubs say "breadcrumb only"), sensor tiles
+  with inline reasons, dashboard nits fixed, pane pixel pass at 1x/1.5x/2x, overlay ex-styles read back
+  (TOPMOST | TRANSPARENT | TOOLWINDOW | LAYERED | NOACTIVATE in live click-through).
+- `packaging/`: version resource, Qt trim (-440 files), crash handler, robust smoke test, install warm-up,
+  `uv.lock` committed. `__main__` caps OpenCV at 1 thread. `--screenshot` sets `QT_QPA_FONTDIR` on Windows.
+
+**Verified on hardware:** everything above marked "verified" ran on the user's PC (i5-13600K, RTX 5070, Windows
+11, 1920x1080 at 100 %, three monitors). Dead by Daylight happened to be running during the session, so the
+window title (`'DeadByDaylight  '`, class `UnrealWindow`, exe `DeadByDaylight-Win64-Shipping.exe`, Steam),
+display mode, WGC capture and process loopback were observed against the real game. Not yet verified by the
+user: F9/F10/F8 marks in a trial, L/R modifiers on a real keyboard, 8 kHz mouse, exclusive fullscreen,
+heartbeat tiers (no bpm data yet), Desktop icon double-click.
+
+**Next (in order):**
+1. **user:** hardware session S1 + probes (this handoff's "Needs from the user").
+2. **lead:** replay S1 through the pipeline (`tools/recording_info.py --marks`); confirm the breadcrumb + marks.
+3. **input-engineer (M2):** calibration wizard backend (spin, keybind capture, ini parsing).
+4. **vision-engineer (M3):** first perception worker on `App.capture.mailbox` (state classifier + map title OCR).
+5. **audio-engineer (M6):** fit `TierModel` from S3; level-based tier (tempo cannot meet the 400 ms budget).
+6. **capture-engineer:** DXGI duplication fallback if S1 shows exclusive-fullscreen use.
+
+**Needs from the user:** see the session message (script S1, probe commands, settings questions).
+
+**Open questions / risks:**
+- Log rules, prompt strings, HUD positions, bpm per tier: still unverified placeholders.
+- `windows-capture` pulls full `opencv-python` next to `opencv-python-headless`; last install wins. Pick one (M9).
+- AltGr sends a fake LCtrl (could read as crouch) - watch in S1.
+- UIPI detection is a passive heuristic (3 s of silence after focusing a non-game window) - can false-positive.
+- Process loopback may hear silence if DBD is routed to a non-default device or muted in the mixer; health
+  would still say ok.
+- Windows 11 rounds windowed-mode client corners (a few black pixels) - ROIs must avoid extreme corners.
+- Project agent types are not registered in this environment; lanes ran as general-purpose Opus/high agents.
+
+---
+
 ## 2026-11-08 - M0 - Scaffold delivered (pre-agent baseline)
 **State:**
 - 84 tests passing (Linux, offscreen Qt); ruff clean.

@@ -59,7 +59,7 @@ class MatchStateMachine:
         self.game_running = False
         self._recent: deque[tuple[MatchState, Role]] = deque(maxlen=agree)
         self._menu_overlay = False
-        self._last_published: MatchStateChanged | None = None
+        self._own: dict[int, MatchStateChanged] = {}  # events we published, until they come back to us
         self.bus: EventBus | None = None
 
     def attach(self, bus: EventBus) -> None:
@@ -78,12 +78,13 @@ class MatchStateMachine:
         self.state, self.role = state, (role if state == MatchState.IN_MATCH else Role.UNKNOWN)
         self.manual = manual and state == MatchState.IN_MATCH
         if self.bus:
-            self._last_published = MatchStateChanged(ts_ns=ts_ns, state=self.state, role=self.role, manual=self.manual)
-            self.bus.publish(self._last_published)
+            evt = MatchStateChanged(ts_ns=ts_ns, state=self.state, role=self.role, manual=self.manual)
+            self._own[id(evt)] = evt  # keeps it alive, so the id cannot be reused before it is dispatched
+            self.bus.publish(evt)
 
     def _on_foreign_state(self, e: MatchStateChanged) -> None:
-        if e is self._last_published:
-            return
+        if self._own.pop(id(e), None) is not None:
+            return  # our own event coming back through the (possibly queued) bus
         self._recent.clear()
         self.state, self.role, self.manual = e.state, e.role, e.manual and e.state == MatchState.IN_MATCH
 

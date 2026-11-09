@@ -138,8 +138,8 @@ def select_mode(
 ) -> ModeChoice:
     """``setting``: "auto" | "process" | "device" (AudioSettings.mode).
 
-    auto    -> process loopback of the DBD tree when its pid is known and process loopback works,
-               otherwise device loopback (with the reason).
+    auto    -> process loopback of the DBD tree when its pid is known and process loopback works;
+               device loopback (with the reason) only as a fallback while DBD runs; "none" without the game.
     process -> process only (no fallback): waits for DBD / reports the failure.
     device  -> device loopback only.
     ``process_error`` is the last failure opening process loopback for this pid (auto then falls back).
@@ -151,8 +151,9 @@ def select_mode(
         why = unsupported_reason or "not supported on this Windows"
         return ModeChoice("none", reason=why) if s == "process" else ModeChoice("device", reason=why)
     if dbd_pid is None:
-        why = "Dead by Daylight not running"
-        return ModeChoice("none", reason=why) if s == "process" else ModeChoice("device", reason=why)
+        # auto: nothing to listen to without the game - device loopback would capture Discord/music
+        # for no purpose (privacy). Device loopback is only a fallback while DBD runs.
+        return ModeChoice("none", reason="Dead by Daylight not running")
     if process_error:
         return (
             ModeChoice("none", pid=dbd_pid, reason=process_error)

@@ -9,12 +9,14 @@ from pathlib import Path
 
 from ..core.bus import EventBus
 from ..core.clock import ManualClock
-from ..core.events import Event, PoseEstimate, from_record
+from ..core.events import Event, MatchStateChanged, PoseEstimate, from_record
 
 
-def read_events(session_dir: Path, *, skip_types: tuple[type, ...] = (PoseEstimate,)) -> Iterator[Event]:
-    """Yield recorded events. Derived outputs (PoseEstimate by default) are skipped so the
-    pipeline under test regenerates them."""
+def read_events(
+    session_dir: Path, *, skip_types: tuple[type, ...] = (PoseEstimate, MatchStateChanged)
+) -> Iterator[Event]:
+    """Yield recorded events. Derived outputs (PoseEstimate and MatchStateChanged by default) are
+    skipped so the pipeline under test regenerates them (the state machine runs in every mode)."""
     with (session_dir / "events.jsonl").open(encoding="utf-8") as f:
         for raw in f:
             line = raw.strip()

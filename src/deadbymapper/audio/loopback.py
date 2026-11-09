@@ -195,7 +195,7 @@ class LoopbackHeartbeatService(Service):
             self._unsub()
             self._unsub = None
         for t in self._threads:
-            t.join(timeout=3.0)
+            t.join(timeout=6.0)  # longer than ProcessLoopbackSource.open's 5 s so a blocked open cannot outlive us
         self._threads = []
         self._close_source()
         self.set_health("down", "stopped")
@@ -326,6 +326,10 @@ class LoopbackHeartbeatService(Service):
             delay = self._backoff.fail()
             self._retry_at_ns = now_ns + s_to_ns(delay)
             self.set_health("down", f"no loopback capture: {err}; retrying in {delay:.1f} s")
+            return
+        if self._stop.is_set():  # stop() ran while open() blocked: never leave a live stream behind
+            with contextlib.suppress(Exception):
+                src.close()
             return
         self._backoff.ok()
         self._retry_at_ns = 0

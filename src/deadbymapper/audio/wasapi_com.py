@@ -238,6 +238,8 @@ if IS_WINDOWS:  # pragma: no cover - exercised on the user's PC / Windows CI
         ctypes.POINTER(ctypes.c_void_p),
     ]
 
+    _PARKED: list[tuple[Any, Any]] = []  # handlers whose activation timed out (see below)
+
     def activate_process_loopback_client(pid: int, timeout_s: float = 3.0) -> ctypes.c_void_p:
         """IAudioClient for the render stream of process tree ``pid`` (caller releases it). MTA thread."""
         params = AUDIOCLIENT_ACTIVATION_PARAMS()
@@ -256,6 +258,10 @@ if IS_WINDOWS:  # pragma: no cover - exercised on the user's PC / Windows CI
         )
         try:
             if not handler.done.wait(timeout_s):
+                # The audio service may still call ActivateCompleted later: parking the handler (and the
+                # operation) keeps the ctypes vtable thunks alive, so a late callback cannot hit freed memory.
+                _PARKED.append((handler, op))
+                op = ctypes.c_void_p()  # nothing to release here any more
                 raise TimeoutError("ActivateAudioInterfaceAsync did not complete")
             hr_act = HRESULT_T()
             unk = ctypes.c_void_p()
@@ -274,8 +280,9 @@ if IS_WINDOWS:  # pragma: no cover - exercised on the user's PC / Windows CI
                 raise OSError("process loopback activation returned no interface")
             return unk  # activated with riid = IID_IAudioClient, so this IS the IAudioClient
         finally:
-            release(op)
-            del handler  # keep alive until here
+            if op.value:
+                release(op)
+            del handler  # keep alive until here (or parked above)
 
     def default_render_endpoint_id() -> str | None:
         """Endpoint id string of the default console render device (None if there is none)."""

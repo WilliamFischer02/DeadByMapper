@@ -365,12 +365,30 @@ def test_matcher_dbd_defaults():
     m = WindowMatcher(exclude_pids=frozenset({42}))
     exe = "DeadByDaylight-Win64-Shipping.exe"
     assert m.score("DeadByDaylight  ", exe, 1) == 3  # observed title has two trailing spaces
-    assert m.score("deadbydaylight", None, 1) == 2  # title prefix, case-insensitive, exe unreadable
+    assert m.score("deadbydaylight", None, 1) == 0  # exe unreadable but not an Unreal window: no
+    assert m.score("deadbydaylight", None, 1, class_name="UnrealWindow") == 2  # exe unreadable, Unreal class
     assert m.score("", "deadbydaylight-wingdk-shipping.exe", 1) == 3
-    assert m.score("DeadByDaylight - File Explorer", "explorer.exe", 1) == 2  # loses to the exe match
+    # PRIVACY: a title-only match would make this the InputGate's game window and the capture target.
+    assert m.score("DeadByDaylight - File Explorer", "explorer.exe", 1) == 0
+    assert m.score("DeadByDaylight.log - Notepad", "notepad.exe", 7) == 0
+    assert m.score("DeadByDaylight.log - Notepad", "notepad.exe", 7, class_name="Notepad") == 0
+    assert m.score("DeadByDaylight.log - Notepad", None, 7, class_name="Notepad") == 0
     assert m.score("Dead by Daylight wiki - Firefox", "firefox.exe", 1) == 0
     assert m.score("DeadByDaylight", exe, 42) == 0  # never our own process
     assert "DeadByDaylight" in m.describe()
+
+
+def test_app_matchers_require_the_game_exe():
+    """The tracker's and WGC's default matchers must be the strict one (privacy regression guard)."""
+    from deadbymapper.capture.wgc_source import WgcFrameSource
+    from deadbymapper.core.bus import EventBus
+    from deadbymapper.core.clock import ManualClock
+    from deadbymapper.gamelink.window_tracker import WindowTracker
+
+    bus, clock = EventBus(synchronous=True), ManualClock()
+    for m in (WindowTracker(bus, clock).matcher, WgcFrameSource(bus, clock).matcher):
+        assert m.require_exe and m.exe_names
+        assert m.score("DeadByDaylight.log - Notepad", "notepad.exe", 7, class_name="Notepad") == 0
 
 
 def test_matcher_contains_and_pid_modes():

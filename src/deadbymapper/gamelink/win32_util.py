@@ -36,6 +36,7 @@ WS_EX_TOOLWINDOW = 0x00000080
 # user's confirmation via tools/capture_probe.py). Observed once on the target PC, 2026-11-08, Steam build:
 # title 'DeadByDaylight  ' (two trailing spaces), class 'UnrealWindow'. Exe names are process_watcher.py's.
 DBD_WINDOW_TITLE = "DeadByDaylight"
+DBD_WINDOW_CLASS = "UnrealWindow"  # observed on the user's PC (M1); UE5 top-level window class
 
 if IS_WINDOWS:  # pragma: no cover - exercised on Windows CI / the user's PC
     import ctypes
@@ -126,8 +127,13 @@ class WindowMatcher:
     title_mode: str = "prefix"
     pids: frozenset[int] = field(default_factory=frozenset)  # explicit PID override (probe --pid)
     exclude_pids: frozenset[int] = field(default_factory=frozenset)  # never capture our own windows
+    # PRIVACY (docs/FAIR_PLAY.md): the matched window becomes the InputGate's "game window" and the
+    # capture target. With exe names configured, a title match alone is therefore NOT enough: a Notepad
+    # or Explorer window titled "DeadByDaylight.log - ..." must never open the gate. A title match only
+    # counts when the exe could not be read AND the window class is Unreal's. Probes pass exe_names=().
+    require_exe: bool = True
 
-    def score(self, title: str, exe: str | None, pid: int) -> int:
+    def score(self, title: str, exe: str | None, pid: int, class_name: str = "") -> int:
         """0 = no match; higher is better (pid 4 > exe 3 > title prefix 2 > title contains 1)."""
         if pid in self.exclude_pids:
             return 0
@@ -135,6 +141,8 @@ class WindowMatcher:
             return 4 if pid in self.pids else 0
         if exe and exe.lower() in {e.lower() for e in self.exe_names}:
             return 3
+        if self.exe_names and self.require_exe and (exe is not None or class_name != DBD_WINDOW_CLASS):
+            return 0
         t = title.strip().lower()
         if not t:
             return 0
@@ -291,6 +299,14 @@ def find_main_window(pid: int) -> WindowInfo | None:
     return _pick_largest(window_info(h) for h in top_level_windows() if window_pid(h) == pid)  # pragma: no cover
 
 
+def window_class(hwnd: int) -> str:
+    if not IS_WINDOWS:
+        return ""
+    buf = ctypes.create_unicode_buffer(256)  # pragma: no cover - Windows only
+    user32.GetClassNameW(hwnd, buf, 256)
+    return buf.value
+
+
 def find_window(matcher: WindowMatcher) -> WindowInfo | None:
     """Best-matching visible top-level window (highest score, then largest client area)."""
     if not IS_WINDOWS:
@@ -302,7 +318,7 @@ def find_window(matcher: WindowMatcher) -> WindowInfo | None:
         title = window_title(hwnd)
         if pid not in names:
             names[pid] = process_name(pid) if matcher.exe_names else None
-        s = matcher.score(title, names[pid], pid)
+        s = matcher.score(title, names[pid], pid, window_class(hwnd))
         if s <= 0:
             continue
         info = window_info(hwnd, title=title, pid=pid, exe=names[pid])
