@@ -35,6 +35,17 @@ powershell -ExecutionPolicy Bypass -File packaging\build.ps1       # exe + insta
 Play DBD in **Windowed Fullscreen**. Overlays can't draw over exclusive fullscreen; a second monitor
 also works.
 
+## Install
+- Build and install: `powershell -ExecutionPolicy Bypass -File packaging\build.ps1` (about 2 minutes).
+  It runs the tests, builds `dist\DeadByMapper\DeadByMapper.exe`, smoke-tests it, then copies it to
+  `%LOCALAPPDATA%\Programs\DeadByMapper` and adds **DeadByMapper** shortcuts to the Desktop and the
+  Start Menu. No admin rights needed. Re-run it to update; close DeadByMapper first.
+- Reinstall an existing build without rebuilding: `powershell -ExecutionPolicy Bypass -File packaging\install.ps1`.
+- Logs and crash reports: `%LOCALAPPDATA%\DeadByMapper\logs\`.
+- Uninstall: delete `%LOCALAPPDATA%\Programs\DeadByMapper`, plus the two `DeadByMapper.lnk`
+  shortcuts (Desktop, and `%APPDATA%\Microsoft\Windows\Start Menu\Programs`). Your settings and
+  recordings stay in `%LOCALAPPDATA%\DeadByMapper` until you delete that folder too.
+
 ## Fair play (read docs/FAIR_PLAY.md)
 DeadByMapper only observes what you already perceive:
 - your screen;
