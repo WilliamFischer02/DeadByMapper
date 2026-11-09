@@ -74,6 +74,7 @@ class TerrorView:
 class MatchSnapshot:
     match_state: MatchState = MatchState.OFFLINE
     role: Role = Role.UNKNOWN
+    manual_trial: bool = False  # the player started this trial by hand (no automatic detection yet)
     map: MapData | None = None
     pose: PoseEstimate | None = None
     player_status: PlayerStatus = PlayerStatus.UNKNOWN
@@ -163,7 +164,7 @@ class MatchModel:
             self._active_gen = None
             if self._snap.map is not None:
                 self._load_map(self._snap.map.id)
-        self._publish(match_state=e.state, role=e.role)
+        self._publish(match_state=e.state, role=e.role, manual_trial=e.manual and e.state == MatchState.IN_MATCH)
 
     def _on_pose(self, e: PoseEstimate) -> None:
         changes: dict[str, object] = {"pose": e}

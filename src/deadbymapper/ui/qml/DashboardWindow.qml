@@ -26,9 +26,10 @@ Window {
     }
     function heroSub() {
         if (bridge.isDemo) return "Demo mode: a simulated survivor is playing the Test Arena so you can see every layer of the pane."
-        if (!link.running) return "Launch the game. The minimap pane appears on its own when a trial starts."
+        if (!link.running) return "Launch the game. Press Start trial when you load into a match — automatic detection arrives in M3."
         if (link.display === "fullscreen") return "Exclusive fullscreen hides overlays — use Windowed Fullscreen, or put the pane on a second monitor."
-        return "Ready. Queue up — the pane takes over during the trial."
+        if (bridge.hud.trialManual) return "Manual trial running — the pane is up. Press Stop trial when the match ends."
+        return "Ready. Press Start trial when you load into a match — automatic detection arrives in M3."
     }
 
     component NavItem: Rectangle {
@@ -172,6 +173,9 @@ Window {
                         StatusChip { label: modelData.label; status: modelData.status; detail: modelData.detail }
                     }
                 }
+            }
+            TrialControl {
+                anchors { right: parent.right; top: parent.top; rightMargin: 20; topMargin: 40 }
             }
             Rectangle {
                 anchors { right: parent.right; top: parent.top; rightMargin: 20; topMargin: 22 }

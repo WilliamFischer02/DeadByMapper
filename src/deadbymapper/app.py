@@ -91,7 +91,10 @@ class App:
         self.localizer.attach(self.bus)
         self.map_identifier = MapIdentifier(self.registry, self.clock)
         self.map_identifier.attach(self.bus)
+        # Attached in every mode: it owns MatchStateChanged in live mode and adopts the states the
+        # demo driver / replay publish, so the dashboard's manual Start/Stop trial always works.
         self.state_machine = MatchStateMachine(self.clock)
+        self.state_machine.attach(self.bus)
         self.services = ServiceGroup()
         self.recorder: SessionRecorder | None = None
 
@@ -130,7 +133,6 @@ class App:
         from .input.hotkeys import HotkeyMapper
         from .input.raw_input import RawInputListener
 
-        self.state_machine.attach(self.bus)
         LogParser.load().attach(self.bus, self.clock)
         HotkeyMapper(self.keymap).attach(self.bus)
         for svc in (

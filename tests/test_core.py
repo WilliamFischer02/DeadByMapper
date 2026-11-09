@@ -58,6 +58,8 @@ def _sample_events() -> list[ev.Event]:
         ev.PoseEstimate(ts_ns=11, status=ev.PoseStatus.NO_FIX),  # sigma inf, heading None
         ev.LogEvent(ts_ns=12, kind="map_hint", data={"token": "Ind_CoalTower"}),
         ev.UserMark(ts_ns=13, kind="generator"),
+        ev.UserTrialControl(ts_ns=14, action="start", role=ev.Role.SURVIVOR),
+        ev.MatchStateChanged(ts_ns=15, state=ev.MatchState.IN_MATCH, role=ev.Role.SURVIVOR, manual=True),
     ]
 
 

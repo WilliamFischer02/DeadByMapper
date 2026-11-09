@@ -44,6 +44,21 @@ def test_qml_loads_without_warnings(monkeypatch):
         assert warnings == []
         titles = {w.title() for w in qapp.topLevelWindows() if w.isVisible()}
         assert "DeadByMapper - Minimap" in titles and "DeadByMapper" in titles
+        # Manual trial control round-trips QML -> bridge -> bus -> state machine -> model -> bridge.
+        bridge.stopTrial()
+        for _ in range(20):
+            qapp.processEvents()
+            bridge.refresh()
+            time.sleep(0.05)
+        assert bridge.hud["inTrial"] is False and bridge.mode == "idle"
+        bridge.startTrial()
+        for _ in range(20):
+            qapp.processEvents()
+            bridge.refresh()
+            time.sleep(0.05)
+        assert bridge.hud["inTrial"] is True and bridge.hud["trialManual"] is True
+        assert bridge.showDashboardInMatch is True
+        assert warnings == []
         del engine
         del bridge
     finally:

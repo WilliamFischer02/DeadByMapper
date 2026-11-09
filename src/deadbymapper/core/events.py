@@ -99,7 +99,11 @@ class Event:
     ts_ns: int
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
+        # Zero-argument super() is unusable here: dataclass(slots=True) re-creates the class, and
+        # before Python 3.14 the ``__class__`` cell keeps pointing at the pre-slots class, so
+        # ``super()`` raises "obj must be an instance or subtype of type" (CPython gh-90562).
+        # ``Event`` at call time is the module global, i.e. the final slotted class.
+        super(Event, cls).__init_subclass__(**kwargs)
         # dataclass(slots=True) re-creates the class; the last registration wins (the slotted one).
         _REGISTRY[cls.__name__] = cls
 
@@ -190,6 +194,7 @@ class ScreenObserved(Event):
 class MatchStateChanged(Event):
     state: MatchState
     role: Role = Role.UNKNOWN
+    manual: bool = False  # True while the trial was started by the player (UserTrialControl), not detected
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -287,6 +292,20 @@ class UserHeadingFix(Event):
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UserMapOverride(Event):
     map_id: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class UserTrialControl(Event):
+    """Player says "I am in a trial now" / "the trial is over" from the dashboard.
+
+    Needed until automatic match detection exists (M3) and as a manual override afterwards:
+    ``start`` puts the state machine in IN_MATCH (``manual=True`` on the resulting
+    MatchStateChanged, and automatic screen observations are ignored until the trial ends);
+    ``stop`` returns to MENU (or OFFLINE when the game is not running).
+    """
+
+    action: str  # "start" | "stop"
+    role: Role = Role.SURVIVOR
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

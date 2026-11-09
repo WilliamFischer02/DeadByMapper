@@ -15,7 +15,16 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from ..app import App, AppSnapshot
-from ..core.events import MatchState, PoseStatus, UserFix, UserHeadingFix, UserMapOverride, UserMarkGenerator
+from ..core.events import (
+    MatchState,
+    PoseStatus,
+    Role,
+    UserFix,
+    UserHeadingFix,
+    UserMapOverride,
+    UserMarkGenerator,
+    UserTrialControl,
+)
 
 CHIP_LABELS = [
     ("gamelink.process", "Game"),
@@ -159,6 +168,8 @@ class AppBridge(QObject):
                 "interaction": m.active_interaction.value if m.active_interaction else "",
                 "calibrated": snap.calibrated,
                 "ambiguous": list(snap.ambiguous_maps),
+                "trialManual": m.manual_trial,
+                "inTrial": m.match_state == MatchState.IN_MATCH,
             },
             self.hudChanged,
         )
@@ -292,7 +303,11 @@ class AppBridge(QObject):
     library = Property("QVariantMap", lambda self: self._s["library"], notify=libraryChanged)
     clickThrough = Property(bool, lambda self: self._click_through, notify=uiChanged)
     isDemo = Property(bool, lambda self: self._app.mode == "demo", constant=True)
-    showDashboardInMatch = Property(bool, lambda self: self._app.mode == "demo", constant=True)
+    # The dashboard stays up during demo trials and during trials the player started by hand
+    # (that is where the Stop button lives); detected trials hide it so only the pane remains.
+    showDashboardInMatch = Property(
+        bool, lambda self: self._app.mode == "demo" or bool(self._s["hud"].get("trialManual")), notify=hudChanged
+    )
     genHotkey = Property(str, lambda self: self._hotkey_name("generator"), constant=True)
 
     def _hotkey_name(self, kind: str) -> str:
@@ -318,6 +333,15 @@ class AppBridge(QObject):
     @Slot(str)
     def confirmMap(self, map_id: str) -> None:
         self._app.bus.publish(UserMapOverride(ts_ns=self._now(), map_id=map_id))
+
+    @Slot()
+    def startTrial(self) -> None:
+        """Dashboard "Start trial": the pane appears now, before automatic detection exists (M3)."""
+        self._app.bus.publish(UserTrialControl(ts_ns=self._now(), action="start", role=Role.SURVIVOR))
+
+    @Slot()
+    def stopTrial(self) -> None:
+        self._app.bus.publish(UserTrialControl(ts_ns=self._now(), action="stop"))
 
     @Slot(str, str)
     def markGen(self, gen_id: str, state: str) -> None:

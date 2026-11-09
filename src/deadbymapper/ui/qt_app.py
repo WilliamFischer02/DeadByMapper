@@ -17,6 +17,11 @@ def run_ui(app: App, *, screenshot_dir: Path | None = None, screenshot_delay_ms:
     if screenshot_dir is not None:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         os.environ.setdefault("QT_QUICK_BACKEND", "software")
+        if sys.platform == "win32":
+            # The offscreen plugin uses a FreeType font database that only sees QT_QPA_FONTDIR;
+            # without it every glyph renders as a box and screenshots cannot be reviewed.
+            fonts = os.path.join(os.environ.get("SYSTEMROOT", r"C:\Windows"), "Fonts")
+            os.environ.setdefault("QT_QPA_FONTDIR", fonts)
 
     from PySide6.QtCore import Qt, QTimer, QUrl
     from PySide6.QtGui import QGuiApplication, QIcon

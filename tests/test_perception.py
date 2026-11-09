@@ -10,6 +10,7 @@ from deadbymapper.core.events import (
     GameProcessChanged,
     InputFocusChanged,
     InteractionKind,
+    LogEvent,
     MapAmbiguous,
     MapCandidate,
     MapIdentified,
@@ -19,6 +20,7 @@ from deadbymapper.core.events import (
     Role,
     ScreenObserved,
     UserMapOverride,
+    UserTrialControl,
 )
 from deadbymapper.perception.map_identifier import MapIdentifier, candidates_from_text
 from deadbymapper.perception.motion_flow import FlowMotionEstimator
@@ -96,6 +98,77 @@ def test_state_machine_hysteresis_and_overlay():
     assert focus and focus[-1].camera_control is False
     bus.publish(GameProcessChanged(ts_ns=8, running=False))
     assert states[-1].state == MatchState.OFFLINE
+
+
+def _sm():
+    bus = EventBus(synchronous=True)
+    sm = MatchStateMachine(ManualClock(), agree=3)
+    sm.attach(bus)
+    states: list[MatchStateChanged] = []
+    bus.subscribe(MatchStateChanged, states.append)
+    return bus, sm, states
+
+
+def test_manual_trial_start_and_stop_drive_the_state_machine():
+    bus, sm, states = _sm()
+    bus.publish(GameProcessChanged(ts_ns=0, running=True))
+    bus.publish(UserTrialControl(ts_ns=1, action="start"))
+    assert states[-1].state == MatchState.IN_MATCH
+    assert states[-1].role == Role.SURVIVOR
+    assert states[-1].manual is True
+    assert sm.manual is True
+    bus.publish(UserTrialControl(ts_ns=2, action="stop"))
+    assert states[-1].state == MatchState.MENU and states[-1].manual is False
+    assert sm.manual is False
+
+
+def test_manual_trial_ignores_screen_observations_but_keeps_overlay_focus():
+    bus, sm, states = _sm()
+    focus: list[InputFocusChanged] = []
+    bus.subscribe(InputFocusChanged, focus.append)
+    bus.publish(GameProcessChanged(ts_ns=0, running=True))
+    bus.publish(UserTrialControl(ts_ns=1, action="start"))
+    for t in range(2, 6):
+        bus.publish(ScreenObserved(ts_ns=t, screen="menu"))  # classifier noise must not end a manual trial
+    assert states[-1].state == MatchState.IN_MATCH and states[-1].manual is True
+    bus.publish(ScreenObserved(ts_ns=7, screen="in_match_survivor", menu_overlay=True))
+    assert focus and focus[-1].camera_control is False
+    # A verified log "match_end" is authoritative and ends the manual trial.
+    bus.publish(LogEvent(ts_ns=8, kind="match_end", verified=True))
+    assert states[-1].state == MatchState.POST_MATCH and states[-1].manual is False
+    assert sm.manual is False
+
+
+def test_manual_trial_stop_without_game_goes_offline_and_process_exit_clears_manual():
+    bus, sm, states = _sm()
+    bus.publish(UserTrialControl(ts_ns=1, action="start"))
+    assert states[-1].state == MatchState.IN_MATCH  # usable before the process watcher saw the game
+    bus.publish(UserTrialControl(ts_ns=2, action="stop"))
+    assert states[-1].state == MatchState.OFFLINE
+    bus.publish(UserTrialControl(ts_ns=3, action="start"))
+    bus.publish(GameProcessChanged(ts_ns=4, running=False))
+    assert states[-1].state == MatchState.OFFLINE and sm.manual is False
+
+
+def test_state_machine_adopts_state_published_by_others():
+    """Demo/replay publish MatchStateChanged directly; the machine must track it so a manual stop works."""
+    bus, sm, states = _sm()
+    bus.publish(GameProcessChanged(ts_ns=0, running=True))
+    n = len(states)
+    bus.publish(MatchStateChanged(ts_ns=1, state=MatchState.IN_MATCH, role=Role.SURVIVOR))
+    assert len(states) == n + 1  # adopted, not re-published
+    assert sm.state == MatchState.IN_MATCH and sm.role == Role.SURVIVOR
+    bus.publish(UserTrialControl(ts_ns=2, action="stop"))
+    assert states[-1].state == MatchState.MENU
+    bus.publish(UserTrialControl(ts_ns=3, action="start"))
+    assert states[-1].state == MatchState.IN_MATCH and states[-1].manual is True
+    assert states[-1].ts_ns == 3
+
+
+def test_unknown_trial_action_is_ignored():
+    bus, sm, states = _sm()
+    bus.publish(UserTrialControl(ts_ns=1, action="pause"))
+    assert states == [] and sm.state == MatchState.OFFLINE
 
 
 # --------------------------------------------------------------------------- prompts
