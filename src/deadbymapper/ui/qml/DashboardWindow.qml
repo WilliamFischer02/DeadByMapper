@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Window
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import "components"
 
 // Out-of-trial home: is the game linked, are the sensors healthy, is calibration done, how much
@@ -8,9 +8,9 @@ import "components"
 Window {
     id: dash
     width: 1080
-    height: 680
+    height: 720
     minimumWidth: 920
-    minimumHeight: 600
+    minimumHeight: 660
     color: theme.bg
     title: "DeadByMapper"
 
@@ -18,18 +18,29 @@ Window {
     readonly property var lib: bridge.library
     readonly property var counts: lib.counts || ({})
 
+    readonly property bool inTrial: bridge.mode === "match"
+    readonly property string mapStatus: bridge.map.status || ""
+
     function heroTitle() {
-        if (!link.running) return "Waiting for Dead by Daylight"
-        if (bridge.mode === "match") return "In a trial · " + (bridge.map.name || "map not identified yet")
+        if (dash.inTrial) return "In a trial · " + (bridge.map.name || "map not picked yet")
         if (bridge.mode === "review") return "Trial finished"
-        return "Linked · " + [link.platform, link.resolution, link.display].filter(function (s) { return s && s !== "unknown" }).join(" · ")
+        if (!link.running) return "Waiting for Dead by Daylight"
+        return ["Linked", link.platformLabel, link.resolution, link.displayLabel].filter(function (s) { return !!s }).join(" · ")
     }
+    // ONE line: what the player should do next. Must fit beside the action area (~75 characters).
     function heroSub() {
-        if (bridge.isDemo) return "Demo mode: a simulated survivor is playing the Test Arena so you can see every layer of the pane."
-        if (!link.running) return "Launch the game. Press Start trial when you load into a match — automatic detection arrives in M3."
-        if (link.display === "fullscreen") return "Exclusive fullscreen hides overlays — use Windowed Fullscreen, or put the pane on a second monitor."
-        if (bridge.hud.trialManual) return "Manual trial running — the pane is up. Press Stop trial when the match ends."
-        return "Ready. Press Start trial when you load into a match — automatic detection arrives in M3."
+        if (bridge.isDemo)
+            return dash.inTrial ? "A simulated survivor is playing. Stop trial to see the idle dashboard."
+                                : "Demo paused. Start trial brings the pane back."
+        if (bridge.mode === "review") return "Trial over: the pane shows your route. Start trial when the next one loads."
+        if (link.running && link.display === "fullscreen")
+            return "Exclusive fullscreen hides overlays. Switch to Windowed Fullscreen."
+        if (dash.inTrial && !bridge.hud.trialManual) return "Trial detected and the pane is up. Stop trial if that is wrong."
+        if (dash.inTrial && !bridge.map.id) return "Pick the map you loaded into so the pane can place you."
+        if (dash.inTrial && dash.mapStatus === "stub") return "No layout for this map yet: the pane follows your breadcrumb trail."
+        if (dash.inTrial) return "The pane is up. Press Stop trial when you are back in the lobby."
+        if (!link.running) return "Start Dead by Daylight, then press Start trial when the match loads."
+        return "When the match loads, pick the map and press Start trial."
     }
 
     component NavItem: Rectangle {
@@ -58,30 +69,12 @@ Window {
         HoverHandler { id: h }
     }
 
-    component Badge: Rectangle {
-        property string status
-        width: t.implicitWidth + 14; height: 20; radius: 10
-        color: status === "verified" ? theme.badgeVerified
-             : status === "partial" ? theme.badgePartial
-             : status === "synthetic" ? theme.badgeSynthetic : theme.badgeStub
-        Text {
-            id: t
-            anchors.centerIn: parent
-            text: parent.status
-            color: parent.status === "verified" ? theme.genDone : parent.status === "partial" ? theme.warn
-                 : parent.status === "synthetic" ? theme.gate : theme.textMute
-            font.family: theme.font
-            font.pixelSize: 10
-            font.weight: Font.DemiBold
-        }
-    }
-
     component PrimaryButton: Rectangle {
         id: btn
         property string text
         property bool enabledLook: true
         signal clicked()
-        width: lbl.implicitWidth + 28; height: 32; radius: 8
+        width: Math.ceil(lbl.implicitWidth) + 28; height: 32; radius: theme.radiusSmall
         color: !enabledLook ? theme.surface2 : (ma.containsMouse ? theme.white : theme.player)
         Text {
             id: lbl
@@ -89,7 +82,7 @@ Window {
             text: btn.text
             color: btn.enabledLook ? theme.onLight : theme.textMute
             font.family: theme.font
-            font.pixelSize: 12
+            font.pixelSize: 13
             font.weight: Font.DemiBold
         }
         MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; onClicked: btn.clicked() }
@@ -127,7 +120,7 @@ Window {
                 text: "DeadByMapper"
                 color: theme.text
                 font.family: theme.fontDisplay
-                font.pixelSize: 26
+                font.pixelSize: 22
                 font.weight: Font.DemiBold
             }
             Text {
@@ -146,46 +139,48 @@ Window {
             Text { id: demoTxt; anchors.centerIn: parent; text: "DEMO · simulated trial"; color: theme.gate; font.family: theme.font; font.pixelSize: 11; font.weight: Font.DemiBold; font.letterSpacing: 0.8 }
         }
 
-        // ---- hero: game link + sensors
+        // ---- hero: game link + sensors. The action area (map + trial) sits on the eyebrow line.
         Card {
             id: hero
-            anchors { left: parent.left; right: parent.right; top: head.bottom; topMargin: 22 }
-            height: 150
+            anchors { left: parent.left; right: parent.right; top: head.bottom; topMargin: 20 }
+            height: 122 + sensors.height
             eyebrow: "Game link"
             title: dash.heroTitle()
+            pipColor: link.running ? theme.ok : theme.warn
+            pipPulse: !link.running
+            actions: [
+                MapPicker {},
+                TrialControl {}
+            ]
 
-            Column {
-                anchors.fill: parent
-                spacing: 16
-                Text {
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    text: dash.heroSub()
-                    color: theme.textDim
-                    font.family: theme.font
-                    font.pixelSize: 13
-                }
-                Flow {
-                    width: parent.width
-                    spacing: 8
-                    Repeater {
-                        model: bridge.chips
-                        StatusChip { label: modelData.label; status: modelData.status; detail: modelData.detail }
+            Text {
+                id: heroLine
+                width: parent.width - hero.actionsWidth
+                height: 18
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                text: dash.heroSub()
+                color: theme.textDim
+                font.family: theme.font
+                font.pixelSize: 13
+            }
+            // Sensors: dot + name + the reason, so a failure is readable without hovering.
+            Grid {
+                id: sensors
+                y: 34
+                width: parent.width
+                columns: 4
+                rowSpacing: 8
+                columnSpacing: 8
+                readonly property int cellW: Math.floor((width - (columns - 1) * columnSpacing) / columns)
+                Repeater {
+                    model: bridge.chips
+                    StatusChip {
+                        width: sensors.cellW
+                        label: modelData.label
+                        status: modelData.status
+                        detail: modelData.detail
                     }
-                }
-            }
-            TrialControl {
-                anchors { right: parent.right; top: parent.top; rightMargin: 20; topMargin: 40 }
-            }
-            Rectangle {
-                anchors { right: parent.right; top: parent.top; rightMargin: 20; topMargin: 22 }
-                width: 10; height: 10; radius: 5
-                color: link.running ? theme.ok : theme.warn
-                SequentialAnimation on opacity {
-                    running: !link.running
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.3; duration: 900; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1.0; duration: 900; easing.type: Easing.InOutSine }
                 }
             }
         }
@@ -193,29 +188,39 @@ Window {
         // ---- row 2
         Item {
             id: row2
-            anchors { left: parent.left; right: parent.right; top: hero.bottom; bottom: foot.top; topMargin: 16; bottomMargin: 14 }
+            anchors { left: parent.left; right: parent.right; top: hero.bottom; bottom: foot.top; topMargin: 16; bottomMargin: 16 }
             readonly property real gap: 16
-            readonly property real colW: (width - 2 * gap) / 3
+            readonly property real colW: Math.floor((width - 2 * gap) / 3)
 
             Card {
                 id: calib
                 x: 0; width: row2.colW; height: parent.height
                 eyebrow: "Calibration"
-                title: bridge.hud.calibrated ? "Mouse yaw calibrated" : "Mouse not calibrated"
+                title: bridge.isDemo ? "Using the demo's mouse value"
+                     : bridge.hud.calibrated ? "Mouse yaw calibrated" : "Mouse not calibrated"
                 Column {
                     anchors.fill: parent
-                    spacing: 14
+                    spacing: 12
                     Text {
                         width: parent.width
                         wrapMode: Text.WordWrap
-                        text: "One slow 360° spin in a custom game teaches DeadByMapper how far your camera turns per mouse count. Takes about 20 seconds; redo it if you change DPI or in-game sensitivity."
+                        text: "One slow 360° spin in a custom game teaches DeadByMapper how far your camera turns per mouse count. Redo it after changing DPI or sensitivity."
                         color: theme.textDim
                         font.family: theme.font
-                        font.pixelSize: 12
-                        lineHeight: 1.25
+                        font.pixelSize: 13
+                        lineHeight: 1.2
                     }
-                    PrimaryButton { text: bridge.hud.calibrated ? "Recalibrate" : "Calibrate mouse"; enabledLook: false }
-                    Text { text: "Wizard arrives in milestone M2"; color: theme.textMute; font.family: theme.font; font.pixelSize: 11 }
+                    PrimaryButton { text: "Calibrate mouse"; enabledLook: false }
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        text: bridge.isDemo ? "Demo mode runs on the simulator's value, not your mouse. The wizard arrives in M2."
+                                            : "The wizard arrives in milestone M2."
+                        color: theme.textMute
+                        font.family: theme.font
+                        font.pixelSize: 11
+                        lineHeight: 1.2
+                    }
                 }
             }
 
@@ -236,35 +241,43 @@ Window {
                             color: theme.genDone
                         }
                     }
-                    ListView {
+                    Item {
                         width: parent.width
                         height: parent.height - 16
-                        clip: true
-                        spacing: 2
-                        model: dash.lib.maps || []
-                        boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                        delegate: Item {
-                            width: ListView.view.width - 8
-                            height: 28
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 80
-                                elide: Text.ElideRight
-                                text: modelData.name
-                                color: theme.text
-                                font.family: theme.font
-                                font.pixelSize: 12
+                        ListView {
+                            id: libList
+                            // Gutter: the scrollbar sits beside the rows, never over the badges.
+                            width: parent.width - theme.scrollBar - 8
+                            height: parent.height
+                            clip: true
+                            model: dash.lib.maps || []
+                            boundsBehavior: Flickable.StopAtBounds
+                            ScrollBar.vertical: libBar
+                            delegate: Item {
+                                width: ListView.view.width
+                                height: 28
+                                Text {
+                                    width: parent.width - libBadge.width - 8
+                                    height: parent.height
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                    text: modelData.name
+                                    color: theme.text
+                                    font.family: theme.font
+                                    font.pixelSize: 13
+                                }
+                                StatusBadge { id: libBadge; x: parent.width - width; y: 4; status: modelData.status }
                             }
-                            Badge { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; status: modelData.status }
                         }
+                        ListFade { list: libList; width: libList.width; y: libList.height - height }
+                        SlimScrollBar { id: libBar; x: parent.width - width; height: parent.height }
                     }
                 }
             }
 
             Card {
                 id: plan
-                x: 2 * (row2.colW + row2.gap); width: row2.colW; height: parent.height
+                x: 2 * (row2.colW + row2.gap); width: row2.width - x; height: parent.height
                 eyebrow: bridge.mode === "match" ? "Generator plan" : "Last trial"
                 title: bridge.mode === "match"
                        ? (bridge.hud.gensRemaining >= 0 ? bridge.hud.gensRemaining + " generators to go" : "Reading the HUD…")
@@ -276,36 +289,36 @@ Window {
                         width: parent.width
                         wrapMode: Text.WordWrap
                         text: bridge.mode === "match"
-                              ? (bridge.hud.next ? "Ringed on the pane: the gen that " + bridge.hud.nextReason + ". Clear the tight cluster early so the last gens are far apart — never leave a 3-gen." : "Waiting for a position lock to rank generators.")
+                              ? (bridge.hud.next ? "Ringed on the pane: the gen that " + bridge.hud.nextReason.replace(/3-gen/g, "3‑gen") + ". Clear the tight cluster early so the last gens are far apart — never leave a 3‑gen." : "Waiting for a position lock to rank generators.")
                               : "After each trial you get your route, the gens you touched and where the heartbeat started. Turn on Record sessions to keep them."
                         color: theme.textDim
                         font.family: theme.font
-                        font.pixelSize: 12
-                        lineHeight: 1.25
+                        font.pixelSize: 13
+                        lineHeight: 1.2
                     }
                     Row {
                         visible: bridge.mode === "match"
                         spacing: 18
                         Column {
                             spacing: 2
-                            Text { text: "POSITION"; color: theme.textMute; font.family: theme.font; font.pixelSize: 10; font.letterSpacing: 1.1; font.weight: Font.DemiBold }
-                            Text { text: (bridge.player.status || "").replace("_", " "); color: theme.text; font.family: theme.font; font.pixelSize: 14; font.weight: Font.DemiBold }
+                            Text { text: "POSITION"; color: theme.textMute; font.family: theme.font; font.pixelSize: 11; font.letterSpacing: 1.3; font.weight: Font.DemiBold }
+                            Text { text: (bridge.player.status || "").replace("_", " "); color: theme.text; font.family: theme.font; font.pixelSize: 15; font.weight: Font.DemiBold }
                         }
                         Column {
                             spacing: 2
-                            Text { text: "HEARTBEAT"; color: theme.textMute; font.family: theme.font; font.pixelSize: 10; font.letterSpacing: 1.1; font.weight: Font.DemiBold }
+                            Text { text: "HEARTBEAT"; color: theme.textMute; font.family: theme.font; font.pixelSize: 11; font.letterSpacing: 1.3; font.weight: Font.DemiBold }
                             Text {
                                 text: bridge.terror.active ? Math.round(bridge.terror.inner) + "–" + Math.round(bridge.terror.outer) + " m" : "silent"
                                 color: bridge.terror.active ? theme.danger : theme.text
-                                font.family: theme.font; font.pixelSize: 14; font.weight: Font.DemiBold
+                                font.family: theme.font; font.pixelSize: 15; font.weight: Font.DemiBold
                             }
                         }
                         Column {
                             spacing: 2
-                            Text { text: "TRIAL"; color: theme.textMute; font.family: theme.font; font.pixelSize: 10; font.letterSpacing: 1.1; font.weight: Font.DemiBold }
+                            Text { text: "TRIAL"; color: theme.textMute; font.family: theme.font; font.pixelSize: 11; font.letterSpacing: 1.3; font.weight: Font.DemiBold }
                             Text {
                                 text: Math.floor((bridge.hud.elapsed || 0) / 60) + ":" + ("0" + ((bridge.hud.elapsed || 0) % 60)).slice(-2)
-                                color: theme.text; font.family: theme.font; font.pixelSize: 14; font.weight: Font.DemiBold
+                                color: theme.text; font.family: theme.font; font.pixelSize: 15; font.weight: Font.DemiBold
                             }
                         }
                     }
