@@ -28,6 +28,7 @@ class InputSettings(_Base):
 
 class CaptureSettings(_Base):
     backend: str = "auto"  # "auto" | "wgc" | "dxgi"
+    capture_fps: float = 30.0  # frames delivered into the FrameMailbox (WGC pacing)
     perception_fps: float = 15.0  # flow / prompt reading rate
     analysis_width: int = 960  # frames are downscaled to this width for CV
     hud_scale: float = 1.0  # mirror DBD's HUD scale setting (calibrated ROIs override)

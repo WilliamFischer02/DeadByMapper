@@ -135,15 +135,21 @@ class App:
 
         LogParser.load().attach(self.bus, self.clock)
         HotkeyMapper(self.keymap).attach(self.bus)
+        # Kept as an attribute: M3 perception workers pull frames from self.capture.mailbox.
+        self.capture = WgcFrameSource(
+            self.bus,
+            self.clock,
+            analysis_width=self.settings.capture.analysis_width,
+            target_fps=self.settings.capture.capture_fps,
+        )
         for svc in (
+            # Audio first so it subscribes before the process watcher announces the DBD pid.
+            LoopbackHeartbeatService(self.bus, self.clock, settings=self.settings.audio),
             ProcessWatcher(self.bus, self.clock),
             WindowTracker(self.bus, self.clock),
             LogTailService(self.bus, self.clock),
             RawInputListener(self.bus, self.clock, keymap=self.keymap),
-            WgcFrameSource(
-                self.bus, self.clock, window_title="DeadByDaylight", analysis_width=self.settings.capture.analysis_width
-            ),
-            LoopbackHeartbeatService(self.bus, self.clock, settings=self.settings.audio),
+            self.capture,
             Ticker(self.bus, self.clock, self.settings.localization.tick_hz),
         ):
             self.services.add(svc)  # type: ignore[arg-type]

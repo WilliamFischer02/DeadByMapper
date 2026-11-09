@@ -20,7 +20,7 @@
  │  Sensor threads:                                                             │
  │    gamelink.process (psutil, 0.5 Hz)    gamelink.window (Win32, 4 Hz)        │
  │    gamelink.log (tail, 4 Hz)            input.raw (Raw Input msg loop)       │
- │    capture.wgc (WGC callbacks) ──► FrameMailbox ──► perception workers       │
+ │    capture.wgc (native cb: copy) + .convert + .supervisor ──► FrameMailbox ──► perception       │
  │    audio loopback callback ──► HeartbeatAnalyzer ──► TerrorRadiusObserved    │
  │    ticker (60 Hz Tick)                                                       │
  └──────────────────────────────────────────────────────────────────────────────┘

@@ -40,6 +40,11 @@
           "title": "Backend",
           "type": "string"
         },
+        "capture_fps": {
+          "default": 30.0,
+          "title": "Capture Fps",
+          "type": "number"
+        },
         "perception_fps": {
           "default": 15.0,
           "title": "Perception Fps",

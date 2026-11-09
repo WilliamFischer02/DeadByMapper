@@ -31,6 +31,15 @@ def _setup_logging(level: str) -> None:
     )
 
 
+def _limit_opencv_threads(n: int = 1) -> None:
+    """OpenCV's default pool (20 threads here) spins after every resize and doubled process CPU
+    during capture (docs/CAPTURE.md). Our CV work is small per frame; revisit in M3 if perception needs more."""
+    with contextlib.suppress(Exception):
+        import cv2
+
+        cv2.setNumThreads(n)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="deadbymapper", description="Glanceable live minimap companion for Dead by Daylight"
@@ -49,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     _setup_logging(args.log_level)
+    _limit_opencv_threads()
     from .gamelink.win32_util import set_dpi_awareness
 
     set_dpi_awareness()
