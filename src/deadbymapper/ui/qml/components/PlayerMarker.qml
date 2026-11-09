@@ -51,9 +51,9 @@ Item {
                     GradientStop { position: 1.0; color: theme.playerClear }
                 }
                 startX: 26; startY: 30
-                PathLine { x: 26 - 30 * Math.sin(Math.PI * 36 / 180); y: 30 - 30 * Math.cos(Math.PI * 36 / 180) }
+                PathLine { x: 26 - 30 * Math.sin(Math.PI * 30 / 180); y: 30 - 30 * Math.cos(Math.PI * 30 / 180) }
                 PathArc {
-                    x: 26 + 30 * Math.sin(Math.PI * 36 / 180); y: 30 - 30 * Math.cos(Math.PI * 36 / 180)
+                    x: 26 + 30 * Math.sin(Math.PI * 30 / 180); y: 30 - 30 * Math.cos(Math.PI * 30 / 180)
                     radiusX: 30; radiusY: 30
                 }
                 PathLine { x: 26; y: 30 }

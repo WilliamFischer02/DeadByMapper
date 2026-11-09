@@ -18,7 +18,7 @@ Item {
     Rectangle {
         visible: g.emphasize
         anchors.centerIn: parent
-        width: g.size + 13; height: width; radius: width / 2
+        width: g.size + 12; height: width; radius: width / 2
         color: "transparent"
         border.color: theme.player
         border.width: 1.5

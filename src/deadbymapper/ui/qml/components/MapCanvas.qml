@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Window
 
 // North-up map view in METRES. Layer order (bottom -> top):
 //   tap area, map fill, 8 m grid, structures, scale bar, exit gates, generators, trail,
@@ -22,8 +23,14 @@ Item {
 
     function px(xm) { return ox + xm * s }
     function py(ym) { return oy + ym * s }
-    // 1 px strokes on half-pixel centres = crisp edges (no 2-px grey smear)
-    function crisp(v) { return Math.round(v) + 0.5 }
+    // Hairlines are snapped in DEVICE pixels (the canvas origin sits on the 4 px grid, so it is on a
+    // device pixel at 100/125/150/175/200 %): one hairline = floor(dpr) device px, never 1.5 px.
+    readonly property real dpr: Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1
+    readonly property int hairDev: Math.max(1, Math.floor(dpr))
+    readonly property real hair: hairDev / dpr
+    function snap(v) { return Math.round(v * dpr) / dpr }
+    // stroke centre for a crisp hairline: half-pixel centre for odd device widths, whole for even
+    function crisp(v) { return (Math.round(v * dpr) + (hairDev % 2 ? 0.5 : 0)) / dpr }
     function poly(pts, closed) {
         var out = []
         for (var i = 0; i < pts.length; ++i)
@@ -53,7 +60,7 @@ Item {
         ShapePath {
             fillColor: theme.mapFill
             strokeColor: theme.mapStroke
-            strokeWidth: 1
+            strokeWidth: cv.hair
             PathPolyline { path: cv.poly(cv.mapData.bounds || [], true) }
         }
     }
@@ -62,16 +69,16 @@ Item {
     Repeater {
         model: cv.hasMap ? Math.floor(cv.mapW / 8) + 1 : 0
         Rectangle {
-            x: Math.round(cv.px(index * 8)); y: cv.oy
-            width: 1; height: Math.round(cv.mapH * cv.s)
+            x: cv.snap(cv.px(index * 8)); y: cv.oy
+            width: cv.hair; height: Math.round(cv.mapH * cv.s)
             color: index % 4 === 0 ? theme.gridMajor : theme.grid
         }
     }
     Repeater {
         model: cv.hasMap ? Math.floor(cv.mapH / 8) + 1 : 0
         Rectangle {
-            x: cv.ox; y: Math.round(cv.py(index * 8))
-            width: Math.round(cv.mapW * cv.s); height: 1
+            x: cv.ox; y: cv.snap(cv.py(index * 8))
+            width: Math.round(cv.mapW * cv.s); height: cv.hair
             color: index % 4 === 0 ? theme.gridMajor : theme.grid
         }
     }
@@ -83,7 +90,7 @@ Item {
             ShapePath {
                 fillColor: modelData.solid ? theme.structFill : "transparent"
                 strokeColor: modelData.solid ? theme.structStroke : theme.tileStroke
-                strokeWidth: 1
+                strokeWidth: cv.hair
                 strokeStyle: modelData.solid ? ShapePath.SolidLine : ShapePath.DashLine
                 dashPattern: [3, 3]
                 PathPolyline { path: cv.poly(modelData.points, true) }
@@ -133,7 +140,7 @@ Item {
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
             strokeColor: theme.trail
-            strokeWidth: 2
+            strokeWidth: 1.5
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             joinStyle: ShapePath.RoundJoin
@@ -205,7 +212,7 @@ Item {
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 strokeColor: theme.trail
-                strokeWidth: 2
+                strokeWidth: 1.5
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap
                 joinStyle: ShapePath.RoundJoin
