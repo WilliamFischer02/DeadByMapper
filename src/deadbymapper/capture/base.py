@@ -25,27 +25,52 @@ class FrameSource(Protocol):
 
 
 class FrameMailbox:
+    """Latest-only, single slot. ``put`` never blocks on consumers (only a short lock).
+
+    Counters: ``puts`` frames offered, ``dropped`` frames overwritten before ANY consumer read them
+    (expected when consumers run slower than capture - that is the point of latest-only), ``reads``
+    distinct frames handed out.
+    """
+
     def __init__(self) -> None:
         self._frame: Frame | None = None
         self._cond = threading.Condition()
         self._seq = 0
+        self._read_seq = 0
+        self.puts = 0
+        self.dropped = 0
+        self.reads = 0
 
     def put(self, frame: Frame) -> None:
         with self._cond:
+            if self._frame is not None and self._frame.seq > self._read_seq:
+                self.dropped += 1
             self._seq += 1
+            self.puts += 1
             self._frame = Frame(frame.ts_ns, frame.image, frame.scale, self._seq)
             self._cond.notify_all()
 
+    def _mark_read(self, frame: Frame | None) -> Frame | None:
+        if frame is not None and frame.seq > self._read_seq:
+            self._read_seq = frame.seq
+            self.reads += 1
+        return frame
+
     def latest(self) -> Frame | None:
         with self._cond:
-            return self._frame
+            return self._mark_read(self._frame)
 
     def wait_newer(self, seq: int, timeout: float = 0.5) -> Frame | None:
         with self._cond:
             if self._frame is not None and self._frame.seq > seq:
-                return self._frame
+                return self._mark_read(self._frame)
             self._cond.wait(timeout)
-            return self._frame if self._frame is not None and self._frame.seq > seq else None
+            return self._mark_read(self._frame) if self._frame is not None and self._frame.seq > seq else None
+
+    def clear(self) -> None:
+        """Forget the current frame (e.g. the window closed) so consumers do not analyse stale pixels."""
+        with self._cond:
+            self._frame = None
 
 
 def downscale(image: np.ndarray, width: int) -> tuple[np.ndarray, float]:
