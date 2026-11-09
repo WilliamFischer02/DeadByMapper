@@ -11,6 +11,8 @@
   "heartbeat": {
     "description": "Heartbeat SFX loudness and pace increase with proximity. The in-game Visual Terror Radius (Settings > Accessibility, off by default) draws a beating heart in the survivor's chest, in sync with the heartbeat; colour-blind modes recolour it; lullabies show as a non-graded haze.",
     "bpm_by_tier": null,
+    "calibrated": false,
+    "_measure_with": "tools/audio_probe.py --mode auto during a custom game (docs/AUDIO_HEARTBEAT.md, session S3); bpm_by_tier stays null until then.",
     "_bpm_note": "Unknown - measure from a recorded KYF/custom session (docs/AUDIO_HEARTBEAT.md) and fill in."
   },
   "default_radius_by_speed_mps": {
