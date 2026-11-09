@@ -14,7 +14,7 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
-from ..app import App, AppSnapshot
+from ..app import TEST_MAP_ID, App, AppSnapshot
 from ..core.events import (
     MatchState,
     PoseStatus,
@@ -26,14 +26,48 @@ from ..core.events import (
     UserTrialControl,
 )
 
-CHIP_LABELS = [
-    ("gamelink.process", "Game"),
-    ("capture.wgc", "Capture"),
-    ("input.raw", "Input"),
+# Sensor chips in reading order (left to right, top to bottom on the dashboard). Keys are the
+# ``Service.name`` strings. "Demo" only appears in demo mode; "Map data" is always appended last.
+CHIP_LABELS: list[tuple[str, str]] = [
+    ("gamelink.process", "Process"),
+    ("gamelink.window", "Window"),
     ("gamelink.log", "Log"),
+    ("input.raw", "Input"),
+    ("capture.wgc", "Capture"),
     ("audio.heartbeat", "Audio"),
     ("demo", "Demo"),
+    ("ticker", "Clock"),
 ]
+# Internal plumbing: no chip while healthy, a chip only when it fails (the user can do nothing about it
+# otherwise, and a healthy clock is noise).
+QUIET_UNLESS_FAILING = frozenset({"ticker"})
+# Plain-language detail for services that report "ok" without one.
+OK_DETAIL = {
+    "gamelink.log": "Following the game log",
+    "input.raw": "Keyboard + mouse, read-only",
+    "capture.wgc": "Capturing the game window",
+    "audio.heartbeat": "Listening for the heartbeat",
+    "demo": "Simulated survivor on the Test Arena",
+    "ticker": "Running",
+}
+MAP_STATUS_DETAIL = {
+    "synthetic": "test layout",
+    "verified": "verified layout",
+    "partial": "partial layout",
+    "stub": "no layout yet",
+}
+TEST_GROUP = "TEST"
+# Player-facing words for ids that come from the game link (never show raw ids).
+PLATFORM_LABEL = {"steam": "Steam", "epic": "Epic Games", "msstore": "Microsoft Store", "simulated": "Simulated"}
+DISPLAY_LABEL = {
+    "fullscreen": "Exclusive fullscreen",
+    "windowed_fullscreen": "Windowed fullscreen",
+    "windowed": "Windowed",
+}
+
+
+def _realm_key(realm: str) -> str:
+    return realm.removeprefix("The ").casefold()
 
 
 def _r(v: float, q: float = 0.05) -> float:
@@ -75,6 +109,7 @@ class AppBridge(QObject):
             "library": {},
         }
         self._click_through = app.mode != "demo" and app.settings.ui.click_through
+        self._pickable_maps = self._pickable()  # the registry is static for the app's lifetime
         self._tick = 0
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh)
@@ -206,31 +241,72 @@ class AppBridge(QObject):
         return {
             "running": snap.game_running,
             "platform": snap.platform or "",
+            "platformLabel": PLATFORM_LABEL.get(snap.platform or "", ""),
             "mode": snap.mode,
             "resolution": f"{w[2]}×{w[3]}" if w else "",
             "display": snap.display_mode,
+            "displayLabel": DISPLAY_LABEL.get(snap.display_mode, ""),
             "version": snap.version,
         }
 
     def _chips(self, snap: AppSnapshot) -> list[dict[str, str]]:
+        """One chip per sensor with a human-readable reason, so a failure is visible at a glance."""
         out = []
+        demo = snap.mode == "demo"
         for key, label in CHIP_LABELS:
+            if key == "demo" and not demo:
+                continue
             if key in snap.health:
                 status, detail = snap.health[key]
-                out.append({"key": key, "label": label, "status": status, "detail": detail})
-            elif not (key == "demo" or snap.mode == "demo"):
-                out.append({"key": key, "label": label, "status": "off", "detail": "not started"})
-        maps = snap.match.map
-        out.append(
-            {
-                "key": "map",
-                "label": "Map data",
-                "status": (
-                    "ok" if maps and maps.status in ("verified", "synthetic") else ("degraded" if maps else "off")
-                ),
-                "detail": f"{maps.name}: {maps.status}" if maps else "no map identified",
-            }
-        )
+                if key in QUIET_UNLESS_FAILING and status in ("ok", "disabled"):
+                    continue
+                detail = detail or self._default_detail(key, status, snap)
+            elif key in QUIET_UNLESS_FAILING:
+                continue
+            else:
+                status, detail = "off", "Not used in demo mode" if demo else "Not started"
+            out.append({"key": key, "label": label, "status": status, "detail": detail})
+        mp = snap.match.map
+        if mp is None:
+            status, detail = "off", "No map picked yet"
+        else:
+            status = "ok" if mp.status in ("verified", "synthetic") else "degraded"
+            detail = f"{mp.name} · {MAP_STATUS_DETAIL.get(mp.status, mp.status)}"
+        out.append({"key": "map", "label": "Map data", "status": status, "detail": detail})
+        return out
+
+    @staticmethod
+    def _default_detail(key: str, status: str, snap: AppSnapshot) -> str:
+        if status == "down":
+            return "Stopped"
+        if status == "degraded":
+            return "Degraded"
+        if status == "disabled":
+            return "Disabled"
+        if key == "gamelink.process":
+            if not snap.game_running:
+                return "Game not running"
+            platform = PLATFORM_LABEL.get(snap.platform or "", "")
+            return f"Game running · {platform}" if platform else "Game running"
+        if key == "gamelink.window":
+            w = snap.window
+            if not w:
+                return "No game window yet"
+            mode = DISPLAY_LABEL.get(snap.display_mode, "")
+            return f"{w[2]}×{w[3]} · {mode}" if mode else f"{w[2]}×{w[3]}"
+        return OK_DETAIL.get(key, "Running")
+
+    def _pickable(self) -> list[dict[str, str]]:
+        """Maps the player can pick by hand: the Test Arena first (the only map with layout data
+        today), then every live map sorted by realm and name."""
+        reg = self._app.registry
+        out = []
+        if TEST_MAP_ID in reg:
+            t = reg.get(TEST_MAP_ID)
+            out.append({"id": t.id, "name": t.name, "realm": t.realm, "status": t.status, "group": TEST_GROUP})
+        for m in sorted(reg.available(), key=lambda m: (_realm_key(m.realm), m.name.casefold())):
+            if m.id != TEST_MAP_ID:
+                out.append({"id": m.id, "name": m.name, "realm": m.realm, "status": m.status, "group": m.realm})
         return out
 
     def _map(self, snap: AppSnapshot) -> dict[str, Any]:
@@ -301,6 +377,7 @@ class AppBridge(QObject):
     terror = Property("QVariantMap", lambda self: self._s["terror"], notify=terrorChanged)
     hud = Property("QVariantMap", lambda self: self._s["hud"], notify=hudChanged)
     library = Property("QVariantMap", lambda self: self._s["library"], notify=libraryChanged)
+    pickableMaps = Property("QVariantList", lambda self: self._pickable_maps, constant=True)
     clickThrough = Property(bool, lambda self: self._click_through, notify=uiChanged)
     isDemo = Property(bool, lambda self: self._app.mode == "demo", constant=True)
     # The dashboard stays up during demo trials and during trials the player started by hand

@@ -16,6 +16,9 @@ log = logging.getLogger(__name__)
 def run_ui(app: App, *, screenshot_dir: Path | None = None, screenshot_delay_ms: int = 7000) -> int:
     if screenshot_dir is not None:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+        # Headless: software scene graph. With QT_QPA_PLATFORM=windows the real GPU backend renders,
+        # so a screenshot is pixel-identical to what the user sees (use that for crispness QA).
         os.environ.setdefault("QT_QUICK_BACKEND", "software")
         if sys.platform == "win32":
             # The offscreen plugin uses a FreeType font database that only sees QT_QPA_FONTDIR;
@@ -52,6 +55,10 @@ def run_ui(app: App, *, screenshot_dir: Path | None = None, screenshot_delay_ms:
     if not roots:
         log.error("Main.qml failed to load")
         return 1
+    # The pane must never take focus and must let clicks through to the game (WS_EX_* styles).
+    from .overlay_window import install_pane_styles
+
+    install_pane_styles(qapp, bridge)
 
     if screenshot_dir is not None:
         names = {"DeadByMapper": "dashboard", "DeadByMapper - Minimap": "pane"}

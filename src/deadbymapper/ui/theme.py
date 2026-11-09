@@ -13,7 +13,10 @@ OKABE_ITO = {
     "bgPane": "#EB0B0E13",  # 92% - solid enough to read over any scene, no blur (crisp by rule)
     "surface": "#121821",
     "surface2": "#18202B",
+    "surface2Clear": "#0018202B",  # `surface2` at 0 % - list-edge fade inside popups
     "surfaceHover": "#1E2733",
+    "surfaceClear": "#00121821",  # `surface` at 0 % - end of the list-edge fade (same hue, no grey band)
+    "field": "#0F141B",  # recessed input well (filter box) on surface2
     "hairline": "#1FFFFFFF",
     "hairlineStrong": "#33FFFFFF",
     # text
@@ -50,6 +53,9 @@ OKABE_ITO = {
     "badgePartial": "#29F5B83D",
     "badgeSynthetic": "#2956B4E9",
     "badgeStub": "#0FFFFFFF",
+    "warnEdge": "#59F5B83D",  # degraded sensor tile border, 35 %
+    "downEdge": "#66E5484D",  # failing sensor tile border, 40 %
+    "selection": "#6656B4E9",  # text selection in inputs, `gate` at 40 %
     "demoFill": "#2456B4E9",
     "demoStroke": "#7356B4E9",
     # chrome
@@ -66,6 +72,8 @@ OKABE_ITO = {
     # metrics
     "radius": 14,
     "radiusSmall": 8,
+    "radiusTiny": 6,
+    "scrollBar": 4,  # slim scrollbar thickness; the list reserves a gutter of scrollBar + 8
     "paneW": 380,
     "paneH": 452,
     # type

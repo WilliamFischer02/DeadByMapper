@@ -52,51 +52,53 @@ Window {
         border.color: theme.hairline
         border.width: 1
 
+        // Every box sits on the 4 px grid, so at 125/150/175 % edges still land on whole device pixels.
         Item {
             id: header
             anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 16; rightMargin: 16; topMargin: 12 }
-            height: 38
+            height: 40
 
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 3
-                Text {
-                    width: header.width - 70
-                    elide: Text.ElideRight
-                    text: (bridge.map.name || "Map unknown").toUpperCase()
-                    color: theme.text
-                    font.family: theme.font
-                    font.pixelSize: 12
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 1.1
+            Text {
+                y: 0
+                width: header.width - 72
+                height: 18
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                text: (bridge.map.name || "Map unknown").toUpperCase()
+                color: theme.text
+                font.family: theme.font
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                font.letterSpacing: 1.1
+            }
+            Rectangle {
+                id: pip
+                x: 0; y: 26
+                width: 8; height: 8; radius: 4
+                color: pane.st === "locked" ? theme.player : "transparent"
+                border.color: pane.st === "locked" ? theme.player : theme.textDim
+                border.width: 1.5
+                SequentialAnimation on opacity {
+                    running: pane.busy
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.25; duration: 700; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1.0; duration: 700; easing.type: Easing.InOutSine }
+                    onStopped: pip.opacity = 1
                 }
-                Row {
-                    spacing: 6
-                    Rectangle {
-                        width: 7; height: 7; radius: 3.5
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: pane.st === "locked" ? theme.player : "transparent"
-                        border.color: pane.st === "locked" ? theme.player : theme.textDim
-                        border.width: 1.5
-                        SequentialAnimation on opacity {
-                            running: pane.busy
-                            loops: Animation.Infinite
-                            NumberAnimation { to: 0.25; duration: 700; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.0; duration: 700; easing.type: Easing.InOutSine }
-                        }
-                    }
-                    Text {
-                        text: pane.statusText(pane.st)
-                        color: theme.textDim
-                        font.family: theme.font
-                        font.pixelSize: 11
-                        font.letterSpacing: 0.8
-                    }
-                }
+            }
+            Text {
+                x: 16; y: 22
+                height: 16
+                verticalAlignment: Text.AlignVCenter
+                text: pane.statusText(pane.st)
+                color: theme.textDim
+                font.family: theme.font
+                font.pixelSize: 11
+                font.letterSpacing: 0.8
             }
             GenCounter {
                 anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
+                y: 4
                 count: bridge.hud.gensRemaining
             }
             DragHandler {
@@ -107,14 +109,16 @@ Window {
 
         Rectangle {
             id: sep
-            anchors { left: parent.left; right: parent.right; top: header.bottom; topMargin: 10 }
-            height: 1
+            anchors { left: parent.left; right: parent.right; top: header.bottom; topMargin: 8 }
+            // exactly one device pixel thick at any scale (1 logical px would be 1.5 px at 150 %)
+            height: Math.max(1, Math.floor(Screen.devicePixelRatio)) / Screen.devicePixelRatio
             color: theme.hairline
         }
 
         MapCanvas {
             id: canvas
-            anchors { left: parent.left; right: parent.right; top: sep.bottom; bottom: footer.top; margins: 6 }
+            objectName: "mapCanvas"
+            anchors { left: parent.left; right: parent.right; top: sep.top; bottom: footer.top; margins: 8 }
         }
 
         Text {
