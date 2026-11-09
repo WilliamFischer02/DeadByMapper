@@ -1,0 +1,16 @@
+{
+  "_doc": "Interaction prompt / progress-label keywords -> InteractionKind. HYPOTHESES ONLY: confirm every string against captured screenshots at the player's HUD scale and language before setting verified=true. Ambiguous words (e.g. a word shared by chests and gates) must be resolved with context (prompt position, progress-bar label, HUD state), never guessed.",
+  "language": "en",
+  "entries": [
+    {"keyword": "REPAIR", "kind": "generator", "verified": false},
+    {"keyword": "REPAIRING", "kind": "generator", "verified": false},
+    {"keyword": "HIDE", "kind": "locker", "verified": false},
+    {"keyword": "VAULT", "kind": "window", "verified": false},
+    {"keyword": "UNHOOK", "kind": "hook", "verified": false},
+    {"keyword": "HEAL", "kind": "heal", "verified": false},
+    {"keyword": "CLEANSE", "kind": "totem", "verified": false},
+    {"keyword": "BLESS", "kind": "totem", "verified": false},
+    {"keyword": "SEARCH", "kind": "chest", "verified": false},
+    {"keyword": "OPEN", "kind": "ambiguous:exit_gate|chest", "verified": false}
+  ]
+}

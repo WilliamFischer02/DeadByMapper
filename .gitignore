@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build output
+build/
+dist/
+packaging/build/
+*.spec.bak
+
+# Local-only data (never commit): recordings contain screen captures of your games,
+# overlays are third-party / copyrighted images for personal use only.
+recordings/
+data/overlays/*
+!data/overlays/README.md
+qa/screens/
+*.dbmrec/
+
+# Secrets / machine-specific
+.env
+*.local.json
+.claude/settings.local.json
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,224 @@
+{
+  "$defs": {
+    "AudioSettings": {
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "mode": {
+          "default": "auto",
+          "title": "Mode",
+          "type": "string"
+        },
+        "device_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Device Name"
+        },
+        "use_visual_heart": {
+          "default": true,
+          "title": "Use Visual Heart",
+          "type": "boolean"
+        }
+      },
+      "title": "AudioSettings",
+      "type": "object"
+    },
+    "CaptureSettings": {
+      "properties": {
+        "backend": {
+          "default": "auto",
+          "title": "Backend",
+          "type": "string"
+        },
+        "perception_fps": {
+          "default": 15.0,
+          "title": "Perception Fps",
+          "type": "number"
+        },
+        "analysis_width": {
+          "default": 960,
+          "title": "Analysis Width",
+          "type": "integer"
+        },
+        "hud_scale": {
+          "default": 1.0,
+          "title": "Hud Scale",
+          "type": "number"
+        },
+        "ui_scale": {
+          "default": 1.0,
+          "title": "Ui Scale",
+          "type": "number"
+        }
+      },
+      "title": "CaptureSettings",
+      "type": "object"
+    },
+    "InputSettings": {
+      "properties": {
+        "survivor_deg_per_count": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Survivor Deg Per Count"
+        },
+        "killer_deg_per_count": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Killer Deg Per Count"
+        },
+        "keybind_overrides": {
+          "additionalProperties": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "title": "Keybind Overrides",
+          "type": "object"
+        }
+      },
+      "title": "InputSettings",
+      "type": "object"
+    },
+    "LocalizationSettings": {
+      "properties": {
+        "n_particles": {
+          "default": 4000,
+          "title": "N Particles",
+          "type": "integer"
+        },
+        "tick_hz": {
+          "default": 60.0,
+          "title": "Tick Hz",
+          "type": "number"
+        },
+        "default_terror_radius_m": {
+          "default": 32.0,
+          "title": "Default Terror Radius M",
+          "type": "number"
+        }
+      },
+      "title": "LocalizationSettings",
+      "type": "object"
+    },
+    "UiSettings": {
+      "properties": {
+        "pane_x": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pane X"
+        },
+        "pane_y": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pane Y"
+        },
+        "pane_size": {
+          "default": 360,
+          "title": "Pane Size",
+          "type": "integer"
+        },
+        "pane_opacity": {
+          "default": 0.92,
+          "title": "Pane Opacity",
+          "type": "number"
+        },
+        "click_through": {
+          "default": true,
+          "title": "Click Through",
+          "type": "boolean"
+        },
+        "north_up": {
+          "default": true,
+          "title": "North Up",
+          "type": "boolean"
+        },
+        "palette": {
+          "default": "okabe_ito",
+          "title": "Palette",
+          "type": "string"
+        },
+        "show_trail_s": {
+          "default": 25.0,
+          "title": "Show Trail S",
+          "type": "number"
+        },
+        "show_hypotheses": {
+          "default": true,
+          "title": "Show Hypotheses",
+          "type": "boolean"
+        }
+      },
+      "title": "UiSettings",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "input": {
+      "$ref": "#/$defs/InputSettings"
+    },
+    "capture": {
+      "$ref": "#/$defs/CaptureSettings"
+    },
+    "audio": {
+      "$ref": "#/$defs/AudioSettings"
+    },
+    "localization": {
+      "$ref": "#/$defs/LocalizationSettings"
+    },
+    "ui": {
+      "$ref": "#/$defs/UiSettings"
+    },
+    "record_sessions": {
+      "default": false,
+      "title": "Record Sessions",
+      "type": "boolean"
+    }
+  },
+  "title": "Settings",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

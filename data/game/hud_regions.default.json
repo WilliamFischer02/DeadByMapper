@@ -1,0 +1,17 @@
+{
+  "_doc": "Normalised regions of interest (x, y, w, h as fractions of the game CLIENT area) at 16:9 with HUD/UI scale 100%. ALL are uncalibrated placeholders. The calibration wizard captures real screenshots and the player drags each box; results are stored per resolution+HUD scale in %LOCALAPPDATA%\\DeadByMapper\\calibration\\hud_<w>x<h>_<scale>.json. 'anchor' tells regions.py how the element moves when HUD scale changes.",
+  "aspect": "16:9",
+  "regions": {
+    "intro_map_title":   {"x": 0.30, "y": 0.05, "w": 0.40, "h": 0.10, "anchor": "top_center",    "calibrated": false, "note": "map name shown as the trial starts"},
+    "menu_map_title":    {"x": 0.05, "y": 0.05, "w": 0.45, "h": 0.12, "anchor": "top_left",      "calibrated": false, "note": "pause / TAB menu map name"},
+    "loading_screen":    {"x": 0.00, "y": 0.80, "w": 1.00, "h": 0.20, "anchor": "bottom_center", "calibrated": false, "note": "loading bar / tips band"},
+    "survivor_status":   {"x": 0.01, "y": 0.55, "w": 0.16, "h": 0.40, "anchor": "bottom_left",   "calibrated": false, "note": "survivor portraits + states"},
+    "gen_counter":       {"x": 0.01, "y": 0.50, "w": 0.06, "h": 0.06, "anchor": "bottom_left",   "calibrated": false, "note": "generators-remaining number"},
+    "interaction_prompt":{"x": 0.35, "y": 0.78, "w": 0.30, "h": 0.10, "anchor": "bottom_center", "calibrated": false, "note": "context prompt + progress label"},
+    "progress_bar":      {"x": 0.35, "y": 0.70, "w": 0.30, "h": 0.06, "anchor": "bottom_center", "calibrated": false},
+    "skill_check":       {"x": 0.42, "y": 0.38, "w": 0.16, "h": 0.24, "anchor": "center",        "calibrated": false},
+    "perks":             {"x": 0.82, "y": 0.80, "w": 0.17, "h": 0.18, "anchor": "bottom_right",  "calibrated": false},
+    "character_chest":   {"x": 0.46, "y": 0.52, "w": 0.08, "h": 0.12, "anchor": "center",        "calibrated": false, "note": "Visual Terror Radius heart (3rd-person character)"},
+    "flow_mask_character": {"x": 0.38, "y": 0.35, "w": 0.24, "h": 0.65, "anchor": "center",      "calibrated": false, "note": "EXCLUDED from optical flow (own character)"}
+  }
+}

@@ -1,0 +1,699 @@
+{
+  "$defs": {
+    "ExitGateCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "pos_m": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Pos M",
+          "type": "array"
+        },
+        "floor": {
+          "default": "ground",
+          "title": "Floor",
+          "type": "string"
+        },
+        "sigma_m": {
+          "default": 1.0,
+          "description": "Positional uncertainty (tile-dependent spots: 3-6 m).",
+          "exclusiveMinimum": 0,
+          "title": "Sigma M",
+          "type": "number"
+        },
+        "fixed": {
+          "default": false,
+          "description": "Always spawns in every trial on this map.",
+          "title": "Fixed",
+          "type": "boolean"
+        },
+        "slot": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "TileSlot id this candidate belongs to, if tile-dependent.",
+          "title": "Slot"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "facing_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Outward normal heading (0 = map up, clockwise).",
+          "title": "Facing Deg"
+        },
+        "edge": {
+          "anyOf": [
+            {
+              "enum": [
+                "north",
+                "south",
+                "east",
+                "west",
+                "interior"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Edge"
+        }
+      },
+      "required": [
+        "id",
+        "pos_m"
+      ],
+      "title": "ExitGateCandidate",
+      "type": "object"
+    },
+    "Floor": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "z_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Z M"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "Floor",
+      "type": "object"
+    },
+    "Overlay": {
+      "additionalProperties": false,
+      "description": "Personal reference image placed in the user's overlays dir. Never bundled or committed.",
+      "properties": {
+        "image": {
+          "title": "Image",
+          "type": "string"
+        },
+        "px_to_m": {
+          "description": "Affine a,b,c,d,e,f: x_m = a*px + b*py + c ; y_m = d*px + e*py + f",
+          "maxItems": 6,
+          "minItems": 6,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Px To M",
+          "type": "array"
+        },
+        "opacity": {
+          "default": 0.85,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Opacity",
+          "type": "number"
+        }
+      },
+      "required": [
+        "image",
+        "px_to_m"
+      ],
+      "title": "Overlay",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "accessed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accessed"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "SpawnCandidate": {
+      "additionalProperties": false,
+      "description": "A *possible* spawn location. DBD spawns 7 generators per 1v4 trial out of a larger,\npredetermined set of locations, so most candidates are 'maybe'.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "pos_m": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Pos M",
+          "type": "array"
+        },
+        "floor": {
+          "default": "ground",
+          "title": "Floor",
+          "type": "string"
+        },
+        "sigma_m": {
+          "default": 1.0,
+          "description": "Positional uncertainty (tile-dependent spots: 3-6 m).",
+          "exclusiveMinimum": 0,
+          "title": "Sigma M",
+          "type": "number"
+        },
+        "fixed": {
+          "default": false,
+          "description": "Always spawns in every trial on this map.",
+          "title": "Fixed",
+          "type": "boolean"
+        },
+        "slot": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "TileSlot id this candidate belongs to, if tile-dependent.",
+          "title": "Slot"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "id",
+        "pos_m"
+      ],
+      "title": "SpawnCandidate",
+      "type": "object"
+    },
+    "Structure": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "main_building",
+            "killer_shack",
+            "building",
+            "landmark",
+            "wall",
+            "blocker",
+            "tile",
+            "stairs",
+            "drop",
+            "basement"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "polygon_m": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 3,
+          "title": "Polygon M",
+          "type": "array"
+        },
+        "floor": {
+          "default": "ground",
+          "title": "Floor",
+          "type": "string"
+        },
+        "solid": {
+          "default": false,
+          "description": "Impassable footprint used by the localizer's occupancy grid.",
+          "title": "Solid",
+          "type": "boolean"
+        },
+        "fixed": {
+          "default": true,
+          "description": "Same position every trial (main buildings usually are).",
+          "title": "Fixed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "polygon_m"
+      ],
+      "title": "Structure",
+      "type": "object"
+    },
+    "TileSlot": {
+      "additionalProperties": false,
+      "description": "A cell region whose contents vary per trial (tile iteration and rotation are random).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "origin_m": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Origin M",
+          "type": "array"
+        },
+        "size_m": {
+          "default": [
+            16.0,
+            16.0
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Size M",
+          "type": "array"
+        },
+        "allowed": {
+          "description": "Tile type ids, see docs/MAP_SPEC.md#tiles",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed",
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "id",
+        "origin_m"
+      ],
+      "title": "TileSlot",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "id": {
+      "description": "<realm_slug>.<map_slug>",
+      "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$",
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "realm": {
+      "title": "Realm",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "stub",
+        "partial",
+        "verified",
+        "synthetic"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "available": {
+      "default": true,
+      "description": "False for removed maps or PTB-only maps.",
+      "title": "Available",
+      "type": "boolean"
+    },
+    "kind": {
+      "default": "outdoor",
+      "enum": [
+        "outdoor",
+        "indoor",
+        "mixed"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "modes": {
+      "items": {
+        "enum": [
+          "1v4",
+          "2v8"
+        ],
+        "type": "string"
+      },
+      "title": "Modes",
+      "type": "array"
+    },
+    "aliases": {
+      "description": "Names as shown in-game (all languages) for OCR.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Aliases",
+      "type": "array"
+    },
+    "log_ids": {
+      "description": "Identifiers seen in DeadByDaylight.log.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Log Ids",
+      "type": "array"
+    },
+    "size_tiles_reported": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Community measurement, 8x8 m tiles (1v4).",
+      "title": "Size Tiles Reported"
+    },
+    "size_tiles_2v8": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Size Tiles 2V8"
+    },
+    "width_m": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Width M"
+    },
+    "height_m": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Height M"
+    },
+    "bounds_polygon_m": {
+      "anyOf": [
+        {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Bounds Polygon M"
+    },
+    "floors": {
+      "items": {
+        "$ref": "#/$defs/Floor"
+      },
+      "title": "Floors",
+      "type": "array"
+    },
+    "structures": {
+      "items": {
+        "$ref": "#/$defs/Structure"
+      },
+      "title": "Structures",
+      "type": "array"
+    },
+    "tile_slots": {
+      "items": {
+        "$ref": "#/$defs/TileSlot"
+      },
+      "title": "Tile Slots",
+      "type": "array"
+    },
+    "generators": {
+      "items": {
+        "$ref": "#/$defs/SpawnCandidate"
+      },
+      "title": "Generators",
+      "type": "array"
+    },
+    "exit_gates": {
+      "items": {
+        "$ref": "#/$defs/ExitGateCandidate"
+      },
+      "title": "Exit Gates",
+      "type": "array"
+    },
+    "hatches": {
+      "items": {
+        "$ref": "#/$defs/SpawnCandidate"
+      },
+      "title": "Hatches",
+      "type": "array"
+    },
+    "survivor_spawns": {
+      "items": {
+        "$ref": "#/$defs/SpawnCandidate"
+      },
+      "title": "Survivor Spawns",
+      "type": "array"
+    },
+    "overlay": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Overlay"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "verified_patch": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Verified Patch"
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "realm",
+    "status"
+  ],
+  "title": "MapData",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

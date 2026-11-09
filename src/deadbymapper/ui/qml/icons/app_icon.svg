@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- DeadByMapper app icon. Pure vector geometry: rendered natively at every size by tools/make_icon.py
+       (never downscaled from one bitmap) so 16/24/32 px stay crisp. -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#121821"/>
+  <rect x="8.5" y="8.5" width="239" height="239" rx="55.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="3"/>
+  <circle cx="128" cy="128" r="76" fill="none" stroke="#F2F5F8" stroke-opacity="0.38" stroke-width="10"/>
+  <path d="M128 52 L162 128 L128 112 L94 128 Z" fill="#F2F5F8"/>
+  <path d="M186 154 L208 176 L186 198 L164 176 Z" fill="#E69F00"/>
+</svg>

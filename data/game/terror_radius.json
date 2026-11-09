@@ -1,0 +1,25 @@
+{
+  "_source": "Dead by Daylight Wiki 'Terror Radius' (deadbydaylight.wiki.gg), accessed 2026-11-08; Mastermind 40 m per PCGamesN (patch 6.2.0).",
+  "layers": {
+    "description": "Layers 1, 2 and 3 divide the Terror Radius into three equidistant radii: layer 1 = far third, layer 2 = middle third, layer 3 = near third. In a chase, layer 4 (chase music) replaces layer 3. Layers 5-6 are chase embellishments.",
+    "tier_to_band_fraction": {
+      "1": [0.6667, 1.0],
+      "2": [0.3333, 0.6667],
+      "3": [0.0, 0.3333]
+    }
+  },
+  "heartbeat": {
+    "description": "Heartbeat SFX loudness and pace increase with proximity. The in-game Visual Terror Radius (Settings > Accessibility, off by default) draws a beating heart in the survivor's chest, in sync with the heartbeat; colour-blind modes recolour it; lullabies show as a non-graded haze.",
+    "bpm_by_tier": null,
+    "_bpm_note": "Unknown - measure from a recorded KYF/custom session (docs/AUDIO_HEARTBEAT.md) and fill in."
+  },
+  "default_radius_by_speed_mps": {
+    "4.6": 32,
+    "4.4": 24
+  },
+  "known_exceptions_m": {
+    "mastermind": 40
+  },
+  "default_m": 32,
+  "_caveat": "Perks, add-ons, powers, Undetectable and Oblivious change or remove the Terror Radius. The ring is only ever as good as what the player can hear."
+}

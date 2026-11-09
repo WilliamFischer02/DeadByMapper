@@ -1,0 +1,97 @@
+[project]
+name = "deadbymapper"
+version = "0.1.0"
+description = "Glanceable live minimap companion for Dead by Daylight. External and read-only: screen, audio, raw-input and log observation only."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+authors = [{ name = "William Fischer", email = "williamsfischer2002@gmail.com" }]
+license = { text = "Proprietary - Goob Entertainment Co. (all rights reserved until a license is chosen)" }
+dependencies = [
+  "numpy>=2.0",
+  "pydantic>=2.7",
+  "rapidfuzz>=3.9",
+  "psutil>=6.0",
+  "platformdirs>=4.2",
+  "opencv-python-headless>=4.10",
+  "PySide6-Essentials>=6.8",
+]
+
+[project.optional-dependencies]
+# Windows-only sensing backends. Install with: uv sync --extra windows
+# Pins are lower bounds believed current as of Nov 2026 - the agent must verify they resolve.
+windows = [
+  "windows-capture>=1.4 ; sys_platform == 'win32'",
+  "pywin32>=306 ; sys_platform == 'win32'",
+  "PyAudioWPatch>=0.2.12 ; sys_platform == 'win32'",
+  "winrt-runtime>=2.0 ; sys_platform == 'win32'",
+  "winrt-Windows.Media.Ocr>=2.0 ; sys_platform == 'win32'",
+  "winrt-Windows.Graphics.Imaging>=2.0 ; sys_platform == 'win32'",
+  "winrt-Windows.Storage.Streams>=2.0 ; sys_platform == 'win32'",
+  "winrt-Windows.Globalization>=2.0 ; sys_platform == 'win32'",
+  "winrt-Windows.Foundation>=2.0 ; sys_platform == 'win32'",
+]
+# Optional OCR engine (ONNX, offline, multilingual). Windows.Media.Ocr is the default backend.
+ocr = ["rapidocr-onnxruntime>=1.3"]
+# Future: tile/object detection models (M8+).
+ml = ["onnxruntime-directml>=1.18 ; sys_platform == 'win32'", "onnxruntime>=1.18 ; sys_platform != 'win32'"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.2",
+  "pytest-cov>=5.0",
+  "ruff>=0.6",
+  "pyright>=1.1.380",
+  "jsonschema>=4.23",
+  "pyinstaller>=6.10 ; sys_platform == 'win32'",
+]
+
+[project.scripts]
+deadbymapper = "deadbymapper.__main__:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deadbymapper"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+  "windows_only: needs real Win32 APIs (skipped elsewhere)",
+  "gui: needs PySide6 + an (offscreen) Qt platform",
+  "needs_game: needs Dead by Daylight running - never runs in CI",
+  "slow: long-running simulation tests",
+]
+filterwarnings = ["error::DeprecationWarning:deadbymapper.*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PL", "N"]
+ignore = [
+  "PLR0913",  # many-arg constructors are fine for value objects
+  "PLR2004",  # magic numbers are documented constants in this domain
+  "PLR0912", "PLR0915", "PLR0911", "PLR0917",
+  "PLC0415",  # deliberate lazy imports: optional/Windows-only deps and fast startup
+  "N802", "N803", "N806", "N815",  # Win32/ctypes and Qt (camelCase signals/properties) conventions
+  "RUF046",  # int(round(x)) is explicit about rounding mode
+  "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004", "S101", "RUF059"]
+"tools/gen_map_stubs.py" = ["E501"]  # data table
+"src/deadbymapper/input/raw_input.py" = ["N801"]
+"src/deadbymapper/gamelink/win32_util.py" = ["N801"]
+
+[tool.pyright]
+include = ["src", "tests", "tools"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+reportMissingImports = "warning"
+reportMissingModuleSource = "none"

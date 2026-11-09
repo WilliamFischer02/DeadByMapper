@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "id": "crotus_prenn_asylum.disturbed_ward",
+  "name": "Disturbed Ward",
+  "realm": "Crotus Prenn Asylum",
+  "status": "stub",
+  "available": true,
+  "kind": "outdoor",
+  "modes": [
+    "1v4",
+    "2v8"
+  ],
+  "aliases": [
+    "Disturbed Ward"
+  ],
+  "log_ids": [],
+  "size_tiles_reported": 152.0,
+  "size_tiles_2v8": 188.0,
+  "width_m": null,
+  "height_m": null,
+  "bounds_polygon_m": null,
+  "floors": [
+    {
+      "id": "ground",
+      "name": "Ground",
+      "z_m": null
+    }
+  ],
+  "structures": [],
+  "tile_slots": [],
+  "generators": [],
+  "exit_gates": [],
+  "hatches": [],
+  "survivor_spawns": [],
+  "overlay": null,
+  "sources": [
+    {
+      "title": "DBD Maps List 2026 (timesaver.gg) - sizes per DBD wiki",
+      "url": "https://timesaver.gg/blog/dbd-maps-list-all-maps-realms",
+      "accessed": "2026-11-08"
+    },
+    {
+      "title": "Dead by Daylight Wiki - Maps/Realms",
+      "url": "https://deadbydaylight.wiki.gg/wiki/Map",
+      "accessed": "2026-11-08"
+    }
+  ],
+  "verified_patch": null,
+  "notes": null
+}

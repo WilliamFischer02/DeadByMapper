@@ -1,0 +1,25 @@
+{
+  "_note": "PC defaults as best understood - NOT verified. WASD / Left Shift sprint / Left Ctrl crouch are well established; interact/rush/item/ability bindings vary and must be confirmed against Settings > Controls (or captured with the calibration wizard). Only movement keys affect localization. Only keys listed here (game actions + app_hotkeys) are ever observed or recorded - see input/privacy.py.",
+  "sprint_toggle": false,
+  "crouch_toggle": false,
+  "survivor": {
+    "move_forward": ["W"],
+    "move_back": ["S"],
+    "move_left": ["A"],
+    "move_right": ["D"],
+    "sprint": ["LSHIFT", "SHIFT"],
+    "crouch": ["LCONTROL", "CONTROL"],
+    "interact": ["LBUTTON"],
+    "rush": ["SPACE"],
+    "use_item": ["RBUTTON"],
+    "active_ability": ["E"],
+    "menu": ["ESCAPE"],
+    "match_details": ["TAB"]
+  },
+  "_app_hotkeys_note": "DeadByMapper's own observe-only hotkeys (the key still reaches the game; nothing is blocked). F9 = 'I'm at a generator now', F10 = 'I'm at an exit gate now', F8 = 'note this moment'. Pick keys the game does not use.",
+  "app_hotkeys": {
+    "generator": ["F9"],
+    "exit_gate": ["F10"],
+    "note": ["F8"]
+  }
+}

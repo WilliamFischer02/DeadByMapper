@@ -1,0 +1,22 @@
+{
+  "_source": "Dead by Daylight Wiki (deadbydaylight.wiki.gg) 'Movement Speeds' - datamined values; accessed 2026-11-08. Re-verify after major patches.",
+  "survivor": {
+    "running_mps": 4.0,
+    "walking_mps": 2.26,
+    "crouching_mps": 1.13,
+    "crawling_initial_mps": 0.7,
+    "crawling_eventual_mps": 1.05,
+    "on_hit_sprint_mps": 6.6,
+    "on_hit_sprint_duration_s": 1.8,
+    "fast_vault_bonus_mps": 0.5,
+    "acceleration_mps2": 10.0,
+    "haste_is_percent_of_base": true,
+    "carried_by_killer_mps": 3.68,
+    "_carried_note": "Killer carrying speed comes from an older wiki revision (92% of 4.0 m/s). Only used to size diffusion while carried - verify before relying on it."
+  },
+  "killer": {
+    "fast_mps": 4.6,
+    "standard_mps": 4.4,
+    "_note": "Most killers move at 4.6 or 4.4 m/s; powers and add-ons change this. Killer-side tracking is a later milestone."
+  }
+}

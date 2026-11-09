@@ -1,0 +1,17 @@
+{
+  "_doc": "Regex rules applied to each new line of %LOCALAPPDATA%\\DeadByDaylight\\Saved\\Logs\\DeadByDaylight.log (a fresh file is written every launch; older ones are renamed *-backup-*). NOTHING here is verified yet: the exact log lines for map load / match start are unknown and may change per patch. Workflow: record a real session (docs/DATA_COLLECTION.md), run `uv run python tools/log_probe.py <log>`, then add rules below with verified=true and the patch you verified on. Never add rules that reveal information the player could not otherwise see (e.g. the killer's identity or loadout before the match) - see docs/FAIR_PLAY.md.",
+  "probe_keywords": ["Map", "Level", "Procedural", "Theme", "LoadMap", "Travel", "Match", "Lobby", "Offering", "/Game/Maps/", "Realm", "GameFlow", "Loading"],
+  "probe_token_pattern": "\\b[A-Z][a-z]{2}_[A-Za-z0-9]{3,}\\b",
+  "_token_hint": "Wiki map icon files are named 'IconMap <Abc>_<MapName>' (e.g. IconMap_Hos_Treatment, IconMap_Swp_ThePaleRose, IconMap_Sub_Street). Internal map tokens in the log may follow the same Prefix_Name shape - confirm before relying on it.",
+  "rules": [
+    {
+      "id": "example_disabled",
+      "enabled": false,
+      "verified": false,
+      "kind": "map_hint",
+      "pattern": "LoadMap:\\s*(?P<path>/Game/Maps/\\S+)",
+      "verified_patch": null,
+      "note": "Placeholder showing the rule format (named groups become event data). Replace with real patterns."
+    }
+  ]
+}

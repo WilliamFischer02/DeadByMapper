@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "id": "withered_isle.garden_of_joy",
+  "name": "Garden of Joy",
+  "realm": "Withered Isle",
+  "status": "stub",
+  "available": true,
+  "kind": "outdoor",
+  "modes": [
+    "1v4"
+  ],
+  "aliases": [
+    "Garden of Joy"
+  ],
+  "log_ids": [],
+  "size_tiles_reported": 164.0,
+  "size_tiles_2v8": null,
+  "width_m": null,
+  "height_m": null,
+  "bounds_polygon_m": null,
+  "floors": [
+    {
+      "id": "ground",
+      "name": "Ground",
+      "z_m": null
+    }
+  ],
+  "structures": [],
+  "tile_slots": [],
+  "generators": [],
+  "exit_gates": [],
+  "hatches": [],
+  "survivor_spawns": [],
+  "overlay": null,
+  "sources": [
+    {
+      "title": "DBD Maps List 2026 (timesaver.gg) - sizes per DBD wiki",
+      "url": "https://timesaver.gg/blog/dbd-maps-list-all-maps-realms",
+      "accessed": "2026-11-08"
+    },
+    {
+      "title": "Dead by Daylight Wiki - Maps/Realms",
+      "url": "https://deadbydaylight.wiki.gg/wiki/Map",
+      "accessed": "2026-11-08"
+    }
+  ],
+  "verified_patch": null,
+  "notes": null
+}
