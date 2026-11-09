@@ -23,7 +23,7 @@ import pytest
 from deadbymapper.core.bus import EventBus
 from deadbymapper.core.clock import MonotonicClock
 
-pytestmark = pytest.mark.windows_only
+pytestmark = [pytest.mark.windows_only, pytest.mark.audio_hw]
 
 TONE_HZ = 440.0
 

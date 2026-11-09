@@ -39,3 +39,5 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.skip(reason="Windows only"))
         if "needs_game" in item.keywords and not os.environ.get("DBM_GAME_TESTS"):
             item.add_marker(pytest.mark.skip(reason="needs Dead by Daylight running (set DBM_GAME_TESTS=1)"))
+        if "audio_hw" in item.keywords and not os.environ.get("DBM_AUDIO_HW_TESTS"):
+            item.add_marker(pytest.mark.skip(reason="plays tones through the speakers (set DBM_AUDIO_HW_TESTS=1)"))

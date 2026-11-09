@@ -62,12 +62,14 @@ markers = [
   "windows_only: needs real Win32 APIs (skipped elsewhere)",
   "gui: needs PySide6 + an (offscreen) Qt platform",
   "needs_game: needs Dead by Daylight running - never runs in CI",
+  "audio_hw: plays short tones through the speakers (opt-in with DBM_AUDIO_HW_TESTS=1)",
   "slow: long-running simulation tests",
 ]
 filterwarnings = ["error::DeprecationWarning:deadbymapper.*"]
 
 [tool.ruff]
 line-length = 120
+extend-exclude = [".claude"]  # agent worktrees live under .claude/worktrees
 target-version = "py312"
 src = ["src", "tests", "tools"]
 

@@ -162,7 +162,7 @@ class KeyEvent(Event):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MouseDelta(Event):
-    dx: int  # raw counts (same units the game receives)
+    dx: int  # raw counts (same units the game receives); may sum several raw reports (batched, <= ~4 ms)
     dy: int
 
 

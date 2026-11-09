@@ -143,7 +143,7 @@ class App:
             WgcFrameSource(
                 self.bus, self.clock, window_title="DeadByDaylight", analysis_width=self.settings.capture.analysis_width
             ),
-            LoopbackHeartbeatService(self.bus, self.clock),
+            LoopbackHeartbeatService(self.bus, self.clock, settings=self.settings.audio),
             Ticker(self.bus, self.clock, self.settings.localization.tick_hz),
         ):
             self.services.add(svc)  # type: ignore[arg-type]
